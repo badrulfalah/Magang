@@ -1,0 +1,19 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengonfirmasi hapus penawaran
+View -> Controller : DELETE /penawaran/{id}
+Controller -> Controller : Validasi hak akses
+alt Diizinkan
+ Controller -> Model : hapusPenawaran()
+ Model -> Database : DELETE penawaran dan brosur
+ Database --> Model : terhapus
+ Controller --> View : 200 pesan berhasil
+else Ditolak
+ Controller --> View : 403 akses ditolak
+end
+View --> Marketing : Menampilkan hasil
+@enduml

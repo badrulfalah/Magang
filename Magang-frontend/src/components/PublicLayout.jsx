@@ -78,9 +78,45 @@ export default function PublicLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false)
   const [categories, setCategories] = useState(staticCategories)
+  const [onlineMarketings, setOnlineMarketings] = useState([])
   const location = useLocation()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const navigate = useNavigate()
+
+  const fetchOnlineMarketings = async () => {
+    try {
+      const res = await api.get("/public/online-marketings")
+      setOnlineMarketings(res.data || [])
+    } catch (err) {
+      console.error("Failed to load online marketings", err)
+    }
+  }
+
+  const handleStartConsultation = async (marketingId) => {
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: location.pathname,
+          alert: 'Silakan masuk atau daftar akun terlebih dahulu untuk berkonsultasi dengan tim Marketing yang sedang online.'
+        }
+      })
+      return
+    }
+
+    try {
+      const res = await api.post('/chats', {
+        marketing_id: marketingId
+      })
+      navigate('/admin/chat', {
+        state: {
+          activeChatId: res.data.id
+        }
+      })
+    } catch (err) {
+      console.error("Failed to start chat session", err)
+      alert("Gagal memulai obrolan. Silakan coba kembali.")
+    }
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -159,6 +195,13 @@ export default function PublicLayout() {
         }
       })
       .catch((err) => console.error("Failed to load services API:", err))
+
+    // Initial fetch of online marketings to check status immediately
+    fetchOnlineMarketings()
+
+    // Poll online marketings status every 15 seconds to keep it fresh
+    const interval = setInterval(fetchOnlineMarketings, 15000)
+    return () => clearInterval(interval)
   }, [])
 
   // Close mobile menu and reset scroll reveal triggers on route change
@@ -354,9 +397,60 @@ export default function PublicLayout() {
                   <Link to="/login" className="btn btn-ghost btn-sm rounded-full text-base-content/80 hover:text-primary">
                     Masuk
                   </Link>
-                  <Link to="/login" className="btn btn-primary border-none btn-sm rounded-full text-white font-bold shadow-md shadow-primary/20">
-                    Konsultasi Gratis
-                  </Link>
+                  {onlineMarketings.length > 0 ? (
+                    <div className="dropdown dropdown-hover dropdown-end">
+                      <div
+                        tabIndex={0}
+                        role="button"
+                        onMouseEnter={fetchOnlineMarketings}
+                        className="btn btn-primary border-none btn-sm rounded-full text-white font-bold shadow-md shadow-primary/20 flex items-center gap-1.5"
+                      >
+                        <span>Konsultasi Gratis</span>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                      </div>
+                      <ul tabIndex={0} className="dropdown-content menu p-2.5 shadow-xl bg-white border border-[#DCE6E1] rounded-2xl w-64 mt-1.5 z-[100] space-y-1">
+                        <div className="px-2.5 py-1.5 border-b border-base-200">
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Marketing Online</span>
+                          <p className="text-[9px] text-base-content/40 mt-0.5">Pilih marketing untuk memulai konsultasi langsung.</p>
+                        </div>
+                        {onlineMarketings.map((m) => (
+                          <li key={m.id}>
+                            <button
+                              onClick={() => handleStartConsultation(m.id)}
+                              className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-primary/5 text-left transition-colors"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden relative">
+                                {m.avatar ? (
+                                  <img src={`http://localhost:8000/storage/${m.avatar}`} alt={m.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  m.name?.charAt(0).toUpperCase()
+                                )}
+                                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white"></span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-xs text-secondary truncate leading-tight">{m.name}</p>
+                                <p className="text-[9px] text-base-content/50 truncate mt-0.5">Aktif sekarang</p>
+                              </div>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onMouseEnter={fetchOnlineMarketings}
+                      className="btn btn-primary border-none btn-sm rounded-full text-white font-bold shadow-md shadow-primary/20"
+                    >
+                      Konsultasi Gratis
+                    </Link>
+                  )}
                 </>
               )}
             </div>

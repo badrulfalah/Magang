@@ -1,0 +1,22 @@
+@startuml
+actor Marketing
+actor Customer
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengubah tahap konsultasi
+View -> Controller : PUT /chat/{id}/status
+Controller -> Controller : Validasi tahap
+alt Valid
+ Controller -> Model : ubahStatus()
+ Model -> Database : UPDATE tahap konsultasi
+ Database --> Model : status tersimpan
+ Model --> Controller : status terbaru
+ Controller --> View : 200 status berhasil
+ View --> Marketing : Menampilkan tahap terbaru
+ View --> Customer : Menampilkan tahap terbaru
+else Tidak valid
+ Controller --> View : 422 tahap tidak valid
+end
+@enduml

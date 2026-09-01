@@ -1,0 +1,20 @@
+@startuml
+actor Pengguna
+boundary View
+control Controller
+entity Model
+database Database
+Pengguna -> View : Mengunggah file chat
+View -> Controller : POST /chat/{id}/files
+Controller -> Controller : Validasi file dan ukuran
+alt File valid
+ Controller -> Model : simpanFile()
+ Model -> Database : INSERT file chat
+ Database --> Model : file tersimpan
+ Model --> Controller : file baru
+ Controller --> View : 201 file berhasil
+else File tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Pengguna : Menampilkan file
+@enduml

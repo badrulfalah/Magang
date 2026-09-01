@@ -1,0 +1,20 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengklaim chat
+View -> Controller : PUT /chat/{id}/claim
+Controller -> Controller : Validasi chat belum ditangani
+alt Valid
+ Controller -> Model : klaimChat()
+ Model -> Database : UPDATE penanggung jawab
+ Database --> Model : chat diperbarui
+ Model --> Controller : chat ditangani
+ Controller --> View : 200 chat berhasil diklaim
+else Tidak valid
+ Controller --> View : 409 chat sudah ditangani
+end
+View --> Marketing : Menampilkan chat
+@enduml

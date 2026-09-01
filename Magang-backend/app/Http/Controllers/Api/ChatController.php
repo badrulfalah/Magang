@@ -57,13 +57,21 @@ class ChatController extends Controller
         $user = $request->user();
         $request->validate([
             'product_id' => 'nullable|exists:produks,id_produk',
+            'marketing_id' => 'nullable|exists:users,id',
         ]);
 
-        // Cari apakah ada sesi aktif (bukan Selesai) untuk produk yang sama
-        $existing = ChatSession::where('customer_id', $user->id)
-            ->where('product_id', $request->product_id)
-            ->where('status', '!=', 'Selesai')
-            ->first();
+        // Cari apakah ada sesi aktif (bukan Selesai) untuk produk/marketing yang sama
+        $query = ChatSession::where('customer_id', $user->id)
+            ->where('status', '!=', 'Selesai');
+        
+        if ($request->product_id) {
+            $query->where('product_id', $request->product_id);
+        }
+        if ($request->marketing_id) {
+            $query->where('marketing_id', $request->marketing_id);
+        }
+
+        $existing = $query->first();
 
         if ($existing) {
             return response()->json($existing, 200);
@@ -72,8 +80,18 @@ class ChatController extends Controller
         $session = ChatSession::create([
             'customer_id' => $user->id,
             'product_id' => $request->product_id,
-            'status' => 'Ketertarikan',
+            'marketing_id' => $request->marketing_id,
+            'status' => $request->marketing_id ? 'Ditindaklanjuti' : 'Ketertarikan',
         ]);
+
+        if ($request->marketing_id) {
+            $marketing = \App\Models\User::find($request->marketing_id);
+            ChatMessage::create([
+                'chat_session_id' => $session->id,
+                'sender_id' => $user->id, // Kirim sebagai system/user
+                'message' => '[Sistem] Obrolan ini langsung diarahkan ke ' . $marketing->name . ' yang sedang online.',
+            ]);
+        }
 
         return response()->json($session, 201);
     }

@@ -485,7 +485,7 @@ export default function PesanKontak() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                  Sistem akan membuka atau menemukan sesi chat aktif dengan <strong>{selectedMessage.nama}</strong>, mengklaimnya untuk Anda, lalu mengirim pesan berikut sebagai pesan pertama.
+                  Sistem akan membuka atau menemukan sesi chat aktif dengan <strong>{selectedMessage.nama}</strong>, lalu mengirim pesan berikut sebagai pesan pertama.
                 </div>
               </div>
 

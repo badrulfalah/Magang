@@ -1,0 +1,43 @@
+@startuml
+skinparam style strictuml
+skinparam dpi 180
+skinparam activityMinimumWidth 190
+skinparam activityPadding 12
+skinparam activityShape rectangle
+skinparam nodesep 55
+skinparam ranksep 70
+skinparam linetype ortho
+skinparam defaultFontSize 13
+skinparam activityFontSize 13
+skinparam activityBorderThickness 1
+skinparam ArrowThickness 2
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 2
+skinparam BackgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #000000
+skinparam ActivityStartColor #000000
+skinparam ActivityEndColor #000000
+skinparam ArrowColor #000000
+skinparam SwimlaneTitleBackgroundColor #FFFFFF
+skinparam SwimlaneTitleFontColor #000000
+
+title Aktivitas: Mengajukan Proyek Baru
+
+|Klien / Customer|
+start
+:Buka menu Proyek;
+:Klik "Ajukan Proyek";
+:Pilih layanan;
+:Masukkan nama dan kebutuhan proyek;
+:Kirim pengajuan;
+
+|Sistem|
+:Memeriksa kelengkapan data;
+:Menyimpan pengajuan proyek;
+:Menampilkan pesan pengajuan berhasil;
+
+|Klien / Customer|
+:Melihat pengajuan proyek;
+stop
+@enduml

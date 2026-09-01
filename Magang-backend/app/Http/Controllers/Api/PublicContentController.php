@@ -140,4 +140,14 @@ class PublicContentController extends Controller
 
         return response()->json($clients);
     }
+
+    public function onlineMarketings()
+    {
+        // Gunakan timezone UTC karena database menyimpan timestamps dalam UTC secara default
+        $marketings = \App\Models\User::role('marketing')
+            ->where('last_seen', '>=', now('UTC')->subMinutes(3))
+            ->get(['id', 'name', 'avatar', 'email']);
+
+        return response()->json($marketings);
+    }
 }

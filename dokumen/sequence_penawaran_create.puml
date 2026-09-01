@@ -1,0 +1,23 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Membuka form penawaran
+View -> Controller : GET /penawaran/create
+Controller --> View : 200 form penawaran
+Marketing -> View : Mengisi data dan brosur
+View -> Controller : POST /penawaran
+Controller -> Controller : Validasi data dan brosur
+alt Valid
+ Controller -> Model : buatPenawaran()
+ Model -> Database : INSERT penawaran
+ Database --> Model : tersimpan
+ Model --> Controller : sukses
+ Controller --> View : 201 pesan berhasil
+else Tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Marketing : Menampilkan hasil
+@enduml

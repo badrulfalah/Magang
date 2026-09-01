@@ -1,0 +1,19 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengunggah dokumentasi
+View -> Controller : POST /proyek/{id}/dokumentasi
+Controller -> Controller : Validasi dokumen dan keterangan
+alt Dokumen valid
+ Controller -> Model : tambahDokumentasi()
+ Model -> Database : INSERT dokumentasi
+ Database --> Model : dokumen tersimpan
+ Controller --> View : 201 dokumentasi baru
+else Dokumen tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Marketing : Menampilkan hasil
+@enduml

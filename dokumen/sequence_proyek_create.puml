@@ -1,0 +1,19 @@
+@startuml
+actor Customer
+boundary View
+control Controller
+entity Model
+database Database
+Customer -> View : Mengirim pengajuan proyek
+View -> Controller : POST /proyek
+Controller -> Controller : Validasi data pengajuan
+alt Valid
+ Controller -> Model : buatProyek()
+ Model -> Database : INSERT proyek
+ Database --> Model : proyek tersimpan
+ Controller --> View : 201 pesan berhasil
+else Tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Customer : Menampilkan hasil
+@enduml

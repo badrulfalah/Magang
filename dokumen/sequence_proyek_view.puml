@@ -1,0 +1,21 @@
+@startuml
+actor Pengguna
+boundary View
+control Controller
+entity Model
+database Database
+Pengguna -> View : Membuka menu proyek
+View -> Controller : GET /proyek
+Controller -> Model : daftarProyek()
+Model -> Database : SELECT daftar proyek
+Database --> Model : daftar proyek
+Model --> Controller : data proyek
+Controller --> View : 200 daftar proyek
+Pengguna -> View : Memilih proyek
+View -> Controller : GET /proyek/{id}
+Controller -> Model : detailProyek()
+Model -> Database : SELECT detail dan dokumentasi
+Database --> Model : detail proyek
+Controller --> View : 200 detail proyek
+View --> Pengguna : Menampilkan proyek
+@enduml

@@ -132,7 +132,8 @@ export default function AjukanProyek({ isOpen, onClose, onSaved }) {
             <input
               type="text"
               placeholder="Contoh: Website E-Commerce & Inventory System"
-              className="input input-bordered rounded-xl text-xs w-full focus:outline-none focus:border-primary/50"
+              className="input input-bordered border-primary/30 rounded-xl text-xs w-full focus:outline-none focus:border-primary focus:input-primary bg-white"
+              style={{ border: '1px solid rgba(46, 150, 120, 0.3)' }}
               value={namaProyek}
               onChange={(e) => setNamaProyek(e.target.value)}
               required
@@ -147,7 +148,8 @@ export default function AjukanProyek({ isOpen, onClose, onSaved }) {
               </span>
             </label>
             <select
-              className="select select-bordered rounded-xl text-xs w-full focus:outline-none focus:border-primary/50"
+              className="select select-bordered border-primary/30 rounded-xl text-xs w-full focus:outline-none focus:border-primary focus:select-primary bg-white"
+              style={{ border: '1px solid rgba(46, 150, 120, 0.3)' }}
               value={layananId}
               onChange={(e) => setLayananId(e.target.value)}
               required
@@ -169,7 +171,8 @@ export default function AjukanProyek({ isOpen, onClose, onSaved }) {
             </label>
             <textarea
               placeholder="Jelaskan ringkasan kebutuhan, fitur utama yang diinginkan, target timeline, atau catatan khusus lainnya..."
-              className="textarea textarea-bordered rounded-xl text-xs h-28 leading-relaxed focus:outline-none focus:border-primary/50"
+              className="textarea textarea-bordered border-primary/30 rounded-xl text-xs h-28 leading-relaxed focus:outline-none focus:border-primary focus:textarea-primary bg-white"
+              style={{ border: '1px solid rgba(46, 150, 120, 0.3)' }}
               value={deskripsiKebutuhan}
               onChange={(e) => setDeskripsiKebutuhan(e.target.value)}
               required
@@ -193,8 +196,8 @@ export default function AjukanProyek({ isOpen, onClose, onSaved }) {
                 <span className="loading loading-spinner loading-xs"></span>
               ) : (
                 <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 rotate-45" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                   </svg>
                   <span>Kirim Pengajuan</span>
                 </>

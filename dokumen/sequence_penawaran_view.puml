@@ -1,0 +1,21 @@
+@startuml
+actor Customer
+boundary View
+control Controller
+entity Model
+database Database
+Customer -> View : Membuka menu penawaran
+View -> Controller : GET /penawaran
+Controller -> Model : daftarPenawaran()
+Model -> Database : SELECT penawaran
+Database --> Model : data penawaran
+Model --> Controller : daftar penawaran
+Controller --> View : 200 daftar penawaran
+Customer -> View : Membuka detail dan brosur
+View -> Controller : GET /penawaran/{id}
+Controller -> Model : detailPenawaran()
+Model -> Database : SELECT detail dan brosur
+Database --> Model : data detail
+Controller --> View : 200 detail dan brosur
+View --> Customer : Menampilkan penawaran
+@enduml

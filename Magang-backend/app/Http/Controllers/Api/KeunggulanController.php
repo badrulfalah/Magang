@@ -30,7 +30,10 @@ class KeunggulanController extends Controller
             'urutan' => 'nullable|integer',
         ]);
 
-        $keunggulan = Keunggulan::create($request->all());
+        $keunggulan = Keunggulan::create([
+            ...$request->only('judul', 'deskripsi', 'icon', 'urutan'),
+            'dibuat_oleh' => $request->user()->id,
+        ]);
 
         return response()->json($keunggulan, 201);
     }

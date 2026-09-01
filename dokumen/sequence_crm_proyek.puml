@@ -1,0 +1,31 @@
+@startuml
+actor Customer
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Customer -> View : Menyetujui penawaran
+View -> Controller : PUT /penawaran/{id}/approve
+Controller -> Controller : Validasi keputusan
+alt Diterima
+ Controller -> Model : setujuiPenawaran()
+ Model -> Database : UPDATE status penawaran
+ Controller -> Model : buatProyek()
+ Model -> Database : INSERT proyek
+ Database --> Model : proyek dibuat
+ Model --> Controller : proyek baru
+ Controller --> View : 201 proyek berhasil dibuat
+else Ditolak
+ Controller -> Model : tolakPenawaran()
+ Model -> Database : UPDATE status penawaran
+ Controller --> View : 200 penawaran ditolak
+end
+View --> Customer : Menampilkan status
+Marketing -> View : Memperbarui perkembangan proyek
+View -> Controller : PUT /proyek/{id}/progress
+Controller -> Model : simpanPerkembangan()
+Model -> Database : UPDATE perkembangan proyek
+Controller --> View : 200 status terbaru
+View --> Customer : Menampilkan perkembangan
+@enduml

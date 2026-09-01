@@ -1,0 +1,226 @@
+@startuml
+hide methods
+hide stereotypes
+skinparam linetype ortho
+skinparam backgroundColor white
+skinparam entityBackgroundColor white
+skinparam entityBorderColor #000000
+skinparam entityHeaderBackgroundColor #D9E2F3
+skinparam entityFontColor #111111
+skinparam ArrowColor #333333
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam entityAttributeFontSize 8
+skinparam nodesep 8
+skinparam ranksep 20
+skinparam dpi 180
+scale 0.82
+
+title Database Schema - Aplikasi CV Kurva Media Teknologi
+
+entity users {
+  * id : BIGINT <<PK>>
+  --
+  name : VARCHAR
+  email : VARCHAR <<UNIQUE>>
+  password : VARCHAR
+  role : ENUM
+  phone : VARCHAR
+  avatar : VARCHAR
+  status : VARCHAR
+  last_seen : TIMESTAMP
+}
+entity roles {
+  * id : BIGINT <<PK>>
+  name : VARCHAR
+  guard_name : VARCHAR
+}
+entity permissions {
+  * id : BIGINT <<PK>>
+  name : VARCHAR
+  guard_name : VARCHAR
+  modul : VARCHAR
+  panel : VARCHAR
+}
+entity model_has_roles {
+  * role_id : BIGINT <<PK, FK>>
+  * model_id : BIGINT <<PK>>
+  model_type : VARCHAR
+}
+entity role_has_permissions {
+  * role_id : BIGINT <<PK, FK>>
+  * permission_id : BIGINT <<PK, FK>>
+}
+entity kategori_layanan {
+  * id_kategori_layanan : BIGINT <<PK>>
+  slug : VARCHAR
+  name : VARCHAR
+  subtitle : TEXT
+}
+entity layanan {
+  * id_layanan : BIGINT <<PK>>
+  id_kategori_layanan : BIGINT <<FK>>
+  title : VARCHAR
+  badge : VARCHAR
+  desc : TEXT
+  tag : VARCHAR
+}
+entity produks {
+  * id_produk : BIGINT <<PK>>
+  nama : VARCHAR
+  slug : VARCHAR
+  foto_sampul : VARCHAR
+  status : ENUM
+}
+entity penawarans {
+  * id : BIGINT <<PK>>
+  marketing_id : BIGINT <<FK>>
+  customer_id : BIGINT <<FK>>
+  produk_id : BIGINT <<FK>>
+  layanan_id : BIGINT <<FK>>
+  judul : VARCHAR
+  harga : DECIMAL
+  brosur_path : VARCHAR
+  status : ENUM
+}
+entity proyeks {
+  * id : BIGINT <<PK>>
+  penawaran_id : BIGINT <<FK>>
+  customer_id : BIGINT <<FK>>
+  layanan_id : BIGINT <<FK>>
+  nama_proyek : VARCHAR
+  progress : INT
+  status_proyek : ENUM
+  tanggal_mulai : DATE
+  tanggal_selesai : DATE
+  timeline : JSON
+  dokumentasi : JSON
+}
+entity chat_sessions {
+  * id : BIGINT <<PK>>
+  customer_id : BIGINT <<FK>>
+  marketing_id : BIGINT <<FK>>
+  product_id : BIGINT <<FK>>
+  status : ENUM
+}
+entity chat_messages {
+  * id : BIGINT <<PK>>
+  chat_session_id : BIGINT <<FK>>
+  sender_id : BIGINT <<FK>>
+  message : TEXT
+  is_read : BOOLEAN
+  is_edited : BOOLEAN
+}
+entity chat_files {
+  * id : BIGINT <<PK>>
+  chat_session_id : BIGINT <<FK>>
+  uploader_id : BIGINT <<FK>>
+  file_path : VARCHAR
+  file_name : VARCHAR
+  keterangan : VARCHAR
+}
+entity kategori_artikel {
+  * id_kategori_artikel : BIGINT <<PK>>
+  nama_kategori : VARCHAR
+}
+entity artikel {
+  * id_artikel : BIGINT <<PK>>
+  id_kategori_artikel : BIGINT <<FK>>
+  id_penulis : BIGINT <<FK>>
+  judul : VARCHAR
+  slug : VARCHAR
+  konten : TEXT
+  status : VARCHAR
+}
+entity testimoni {
+  * id_testimoni : BIGINT <<PK>>
+  id_user : BIGINT <<FK>>
+  nama_klien : VARCHAR
+  rating : INT
+}
+entity anggota_tim {
+  * id_anggota : BIGINT <<PK>>
+  dibuat_oleh : BIGINT <<FK>>
+  nama : VARCHAR
+  jabatan : VARCHAR
+}
+entity faq {
+  * id_faq : BIGINT <<PK>>
+  dibuat_oleh : BIGINT <<FK>>
+  pertanyaan : TEXT
+  jawaban : TEXT
+}
+entity pesan_kontak {
+  * id_pesan_kontak : BIGINT <<PK>>
+  id_user : BIGINT <<FK>>
+  nama : VARCHAR
+  email : VARCHAR
+  subjek : VARCHAR
+  pesan : TEXT
+  status : VARCHAR
+}
+entity pelanggan_newsletter {
+  * id : BIGINT <<PK>>
+  id_user : BIGINT <<FK>>
+  email : VARCHAR
+  status : VARCHAR
+}
+entity pengaturan_situs {
+  * id_pengaturan : BIGINT <<PK>>
+  diubah_oleh : BIGINT <<FK>>
+  kunci : VARCHAR
+  nilai : TEXT
+}
+entity client_logos {
+  * id : BIGINT <<PK>>
+  nama_perusahaan : VARCHAR
+  logo_path : VARCHAR
+  urutan : INT
+}
+entity keunggulans {
+  * id : BIGINT <<PK>>
+  judul : VARCHAR
+  deskripsi : TEXT
+  icon : VARCHAR
+  urutan : INT
+}
+
+users ||--o{ model_has_roles
+roles ||--o{ model_has_roles
+roles ||--o{ role_has_permissions
+permissions ||--o{ role_has_permissions
+kategori_layanan ||--o{ layanan
+users ||--o{ penawarans : marketing
+users ||--o{ penawarans : customer
+produks ||--o{ penawarans
+layanan ||--o{ penawarans
+penawarans ||--o{ proyeks
+users ||--o{ proyeks
+layanan ||--o{ proyeks
+users ||--o{ chat_sessions : customer
+users ||--o{ chat_sessions : marketing
+produks ||--o{ chat_sessions
+chat_sessions ||--o{ chat_messages
+users ||--o{ chat_messages
+chat_sessions ||--o{ chat_files
+users ||--o{ chat_files
+kategori_artikel ||--o{ artikel
+users ||--o{ artikel
+users ||--o{ testimoni
+users ||--o{ anggota_tim
+users ||--o{ faq
+users ||--o{ pesan_kontak
+users ||--o{ pelanggan_newsletter
+users ||--o{ pengaturan_situs
+
+' Susunan visual terkontrol untuk satu halaman Word
+users -[hidden]right- penawarans
+penawarans -[hidden]right- proyeks
+proyeks -[hidden]right- chat_sessions
+chat_sessions -[hidden]right- chat_messages
+chat_messages -[hidden]right- chat_files
+roles -[hidden]down- permissions
+kategori_layanan -[hidden]down- layanan
+kategori_artikel -[hidden]down- artikel
+client_logos -[hidden]down- keunggulans
+@enduml

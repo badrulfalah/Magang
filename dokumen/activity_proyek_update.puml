@@ -1,0 +1,59 @@
+@startuml
+skinparam style strictuml
+skinparam dpi 180
+skinparam activityMinimumWidth 220
+skinparam activityPadding 18
+skinparam activityShape rectangle
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam linetype ortho
+skinparam defaultFontSize 13
+skinparam activityFontSize 13
+skinparam activityBorderThickness 1
+skinparam ArrowThickness 2
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 2
+skinparam partitionBorderColor #000000
+skinparam partitionBorderThickness 2
+skinparam partitionBackgroundColor #FFFFFF
+skinparam BackgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #000000
+skinparam ActivityStartColor #000000
+skinparam ActivityEndColor #000000
+skinparam ArrowColor #000000
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #000000
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneTitleBackgroundColor #FFFFFF
+skinparam SwimlaneTitleFontColor #000000
+
+title Aktivitas: Memperbarui Proyek
+
+
+|Marketing|
+start
+:Memilih proyek;
+:Klik "Edit Proyek";
+:Memperbarui informasi proyek;
+:Memperbarui perkembangan proyek;
+:Memperbarui tahapan proyek;
+:Menyimpan perubahan;
+
+|Sistem|
+:Memeriksa perubahan data;
+if (Data dapat disimpan?) then (ya)
+  :Menyimpan perubahan proyek;
+  :Menampilkan pesan berhasil;
+  
+  |Marketing|
+  :Melihat data proyek terbaru;
+  stop
+else (tidak)
+  :Menampilkan pesan perbaikan data;
+  
+  |Marketing|
+  :Memperbaiki data proyek;
+  end
+endif
+@enduml

@@ -1,0 +1,15 @@
+@startuml
+actor Pengguna
+boundary View
+control Controller
+entity Model
+database Database
+Pengguna -> View : Membuka menu chat
+View -> Controller : GET /chat
+Controller -> Model : ambilPercakapan()
+Model -> Database : SELECT percakapan dan pesan
+Database --> Model : data chat
+Model --> Controller : data chat
+Controller --> View : 200 daftar dan detail chat
+View --> Pengguna : Menampilkan chat
+@enduml

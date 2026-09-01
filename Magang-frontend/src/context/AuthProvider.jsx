@@ -28,6 +28,19 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Heartbeat ping to update user's last_seen
+  useEffect(() => {
+    if (!user) return
+
+    const sendPing = () => {
+      api.post('/profile/ping').catch(() => {})
+    }
+
+    sendPing() // ping immediately
+    const interval = setInterval(sendPing, 30000) // ping every 30s
+    return () => clearInterval(interval)
+  }, [user])
+
   const login = async (email, password) => {
     const res = await api.post('/login', { email, password })
     localStorage.setItem('token', res.data.token)

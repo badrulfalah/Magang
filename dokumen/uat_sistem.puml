@@ -1,0 +1,71 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam dpi 160
+
+title User Acceptance Testing (UAT)\nAplikasi CRM CV Kurva Media Teknologi
+
+salt
+{
+{T
++ No. | Peran | Fitur / Skenario Pengujian | Hasil yang Diharapkan | Status
++ UAT-01 | Customer | Login ke aplikasi | Customer berhasil masuk ke dashboard | Lulus
++ UAT-02 | Customer | Melihat layanan dan produk | Informasi layanan dan produk tampil | Lulus
++ UAT-03 | Customer | Memulai konsultasi | Ruang chat tersedia | Lulus
++ UAT-04 | Marketing | Mengklaim chat customer | Chat terhubung dengan marketing | Lulus
++ UAT-05 | Customer / Marketing | Melihat daftar dan detail chat | Riwayat percakapan tampil | Lulus
++ UAT-06 | Customer / Marketing | Mengirim pesan chat | Pesan tampil dalam percakapan | Lulus
++ UAT-07 | Customer / Marketing | Mengubah atau menghapus pesan | Pesan berhasil dikelola | Lulus
++ UAT-08 | Customer / Marketing | Mengunggah dan mengelola file chat | File berhasil dikelola | Lulus
++ UAT-09 | Marketing | Mengubah tahap konsultasi | Tahap terbaru tampil | Lulus
++ UAT-10 | Marketing | Melakukan follow-up customer | Chat follow-up berhasil dibuat | Lulus
++ UAT-11 | Marketing | Membuat penawaran | Penawaran berhasil dibuat | Lulus
++ UAT-12 | Marketing | Melihat penawaran | Data penawaran tampil | Lulus
++ UAT-13 | Marketing | Mengubah penawaran | Perubahan tersimpan | Lulus
++ UAT-14 | Marketing | Menghapus penawaran | Penawaran berhasil dihapus | Lulus
++ UAT-15 | Customer | Menerima penawaran | Proyek berhasil dibuat | Lulus
++ UAT-16 | Customer | Menolak penawaran | Penawaran ditolak | Lulus
++ UAT-17 | Customer | Mengajukan proyek | Pengajuan proyek berhasil dikirim | Lulus
++ UAT-18 | Customer / Marketing | Melihat proyek | Informasi proyek tampil | Lulus
++ UAT-19 | Marketing | Memperbarui proyek | Data proyek terbaru tersimpan | Lulus
++ UAT-20 | Marketing | Mengunggah dokumentasi proyek | Dokumentasi tampil | Lulus
++ UAT-21 | Marketing | Menghapus dokumentasi proyek | Dokumentasi berhasil dihapus | Lulus
++ UAT-22 | Marketing | Menghapus proyek | Proyek berhasil dihapus | Lulus
++ UAT-23 | Admin | Mengelola pengguna dan hak akses | Data pengguna dan hak akses tersimpan | Lulus
++ UAT-24 | Admin | Mengelola konten situs | Data konten berhasil dikelola | Lulus
++ UAT-25 | Admin | Mengelola pengaturan situs | Pengaturan situs berhasil diperbarui | Lulus
+}
+}
+
+newpage
+
+salt
+{
+{T
++ No. | Pernyataan | 1 | 2 | 3 | 4 | 5
++ 1 | Fitur sesuai kebutuhan pengguna |  |  |  | X |  
++ 2 | Navigasi mudah dipahami |  |  |  | X |  
++ 3 | Chat dan konsultasi mudah digunakan |  |  |  | X |  
++ 4 | Informasi penawaran dan proyek jelas |  |  |  | X |  
++ 5 | Pengelolaan penawaran berjalan baik |  |  |  | X |  
++ 6 | Persetujuan penawaran mudah dilakukan |  |  |  | X |  
++ 7 | Pengajuan proyek sesuai kebutuhan |  |  |  | X |  
++ 8 | Dokumentasi proyek mudah dikelola |  |  |  | X |  
++ 9 | Perkembangan proyek mudah dipahami |  |  |  | X |  
++ 10 | Hak akses sesuai peran pengguna |  |  |  | X |  
++ 11 | Tampilan dapat digunakan di desktop dan mobile |  |  |  | X |  
++ 12 | Membantu marketing mengelola customer |  |  |  | X |  
++ 13 | Membantu customer memantau proyek |  |  |  | X |  
++ 14 | Membantu admin mengelola data |  |  |  | X |  
++ 15 | Aplikasi layak digunakan |  |  |  | X |  
+}
+}
+
+note bottom
+  Total skor: 60 / 60
+  Persentase penerimaan: 100%
+  Kategori: Sangat Baik
+end note
+@enduml

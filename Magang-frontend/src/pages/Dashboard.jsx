@@ -307,7 +307,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-base-content/40 font-bold">Marketing:</span>
-                          <span className="text-[11px] font-semibold text-secondary">{lead.marketing?.name || 'Belum diklaim'}</span>
+                          <span className="text-[11px] font-semibold text-secondary">{lead.marketing?.name || 'Marketing Kurva'}</span>
                           
                           {/* Dropdown status update */}
                           {!isCustomer && (

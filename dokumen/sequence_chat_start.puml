@@ -1,0 +1,24 @@
+@startuml
+actor Customer
+boundary View
+control Controller
+entity Model
+database Database
+Customer -> View : Memulai konsultasi
+View -> Controller : POST /chat
+Controller -> Controller : Validasi customer dan tujuan
+Controller -> Model : cariPercakapan()
+Model -> Database : SELECT percakapan tersedia
+Database --> Model : hasil pencarian
+alt Percakapan tersedia
+ Model --> Controller : percakapan lama
+ Controller --> View : 200 buka percakapan
+else Belum tersedia
+ Controller -> Model : buatPercakapan()
+ Model -> Database : INSERT percakapan
+ Database --> Model : percakapan baru
+ Model --> Controller : pesan pembuka
+ Controller --> View : 201 tampilkan pesan pembuka
+end
+View --> Customer : Menampilkan percakapan
+@enduml

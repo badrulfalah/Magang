@@ -1,0 +1,364 @@
+@startuml
+skinparam style strictuml
+skinparam backgroundColor white
+skinparam classBackgroundColor white
+skinparam classBorderColor black
+skinparam classFontColor black
+skinparam classHeaderBackgroundColor white
+skinparam arrowColor black
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam nodesep 18
+skinparam ranksep 28
+skinparam dpi 130
+hide empty methods
+
+title Class Diagram - Aplikasi CV Kurva Media Teknologi
+
+package "Otorisasi" {
+  class User {
+    id: int
+    name: string
+    email: string
+    phone: string
+    status: string
+    last_seen: datetime
+    --
+    +login()
+    +logout()
+    +updateProfile()
+    +updateAvatar()
+    +proyeks()
+    +penawarans()
+    +chatSessions()
+  }
+  class Role {
+    id: int
+    name: string
+    --
+    +users()
+    +permissions()
+    +assignRole()
+  }
+  class Permission {
+    id: int
+    name: string
+    modul: string
+    --
+    +roles()
+    +checkAccess()
+  }
+  class ModelHasRole {
+    role_id: int
+    model_id: int
+    --
+    +assignRole()
+    +removeRole()
+  }
+  class RoleHasPermission {
+    role_id: int
+    permission_id: int
+    --
+    +givePermission()
+    +revokePermission()
+  }
+}
+
+package "Katalog Layanan" {
+  class KategoriLayanan {
+    id_kategori_layanan: int
+    name: string
+    slug: string
+    --
+    +index()
+    +store()
+    +update()
+    +destroy()
+    +layanans()
+  }
+  class Layanan {
+    id_layanan: int
+    id_kategori_layanan: int
+    title: string
+    desc: text
+    --
+    +index()
+    +store()
+    +update()
+    +destroy()
+    +kategori()
+  }
+  class Produk {
+    id_produk: int
+    nama: string
+    slug: string
+    deskripsi_singkat: text
+    --
+    +index()
+    +show()
+    +store()
+    +update()
+    +destroy()
+    +chatSessions()
+  }
+}
+
+package "CRM" {
+  class Penawaran {
+    id: int
+    marketing_id: int
+    customer_id: int
+    produk_id: int
+    layanan_id: int
+    judul: string
+    harga: decimal
+    status: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +updateStatus()
+    +destroy()
+    +marketing()
+    +customer()
+    +produk()
+    +layanan()
+  }
+  class Proyek {
+    id: int
+    penawaran_id: int
+    customer_id: int
+    layanan_id: int
+    nama_proyek: string
+    deskripsi_kebutuhan: text
+    progress: int
+    status_proyek: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +uploadDokumentasi()
+    +deleteDokumentasi()
+    +destroy()
+    +penawaran()
+    +customer()
+    +layanan()
+  }
+  class ChatSession {
+    id: int
+    customer_id: int
+    marketing_id: int
+    product_id: int
+    status: string
+    --
+    +index()
+    +show()
+    +startSession()
+    +claimChat()
+    +updateStatus()
+    +destroy()
+    +customer()
+    +marketing()
+    +product()
+    +messages()
+    +files()
+  }
+  class ChatMessage {
+    id: int
+    chat_session_id: int
+    sender_id: int
+    message: text
+    is_read: boolean
+    --
+    +sendMessage()
+    +updateMessage()
+    +deleteMessage()
+    +markAsRead()
+    +session()
+    +sender()
+  }
+  class ChatFile {
+    id: int
+    chat_session_id: int
+    uploader_id: int
+    file_name: string
+    keterangan: string
+    --
+    +uploadFile()
+    +updateFile()
+    +deleteFile()
+    +session()
+    +uploader()
+  }
+}
+
+package "Konten & Pengaturan" {
+  class KategoriArtikel {
+    id_kategori_artikel: int
+    nama_kategori: string
+    --
+    +index()
+    +store()
+    +update()
+    +destroy()
+    +artikels()
+  }
+  class Artikel {
+    id_artikel: int
+    id_kategori_artikel: int
+    id_penulis: int
+    judul: string
+    status: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +destroy()
+    +kategori()
+    +penulis()
+  }
+  class Testimoni {
+    id_testimoni: int
+    id_user: int
+    nama_klien: string
+    rating: int
+    --
+    +index()
+    +store()
+    +update()
+    +setStatus()
+    +destroy()
+    +user()
+  }
+  class AnggotaTim {
+    id: int
+    dibuat_oleh: int
+    nama: string
+    jabatan: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +destroy()
+    +pembuat()
+  }
+  class Faq {
+    id: int
+    dibuat_oleh: int
+    pertanyaan: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +destroy()
+    +pembuat()
+  }
+  class PesanKontak {
+    id_pesan_kontak: int
+    id_user: int
+    nama: string
+    subjek: string
+    status: string
+    --
+    +index()
+    +show()
+    +update()
+    +destroy()
+    +followupChat()
+    +user()
+  }
+  class PelangganNewsletter {
+    id: int
+    id_user: int
+    email: string
+    --
+    +index()
+    +subscribe()
+    +destroy()
+    +user()
+  }
+  class PengaturanSitus {
+    id: int
+    diubah_oleh: int
+    kunci: string
+    nilai: text
+    --
+    +index()
+    +show()
+    +update()
+    +upload()
+    +bulkUpdate()
+    +pengubah()
+  }
+  class ClientLogo {
+    id: int
+    nama_perusahaan: string
+    logo_path: string
+    --
+    +index()
+    +store()
+    +show()
+    +update()
+    +destroy()
+    +pembuat()
+  }
+}
+
+' Relasi otorisasi
+User "1" -- "0..*" ModelHasRole
+Role "1" -- "0..*" ModelHasRole
+Role "1" -- "0..*" RoleHasPermission
+Permission "1" -- "0..*" RoleHasPermission
+
+' Relasi katalog
+KategoriLayanan "1" -- "0..*" Layanan
+
+' Relasi CRM
+User "1" -- "0..*" Penawaran : customer
+User "1" -- "0..*" Penawaran : marketing
+Produk "1" -- "0..*" Penawaran
+Layanan "1" -- "0..*" Penawaran
+Penawaran "1" -- "0..*" Proyek
+User "1" -- "0..*" Proyek : customer
+Layanan "1" -- "0..*" Proyek
+User "1" -- "0..*" ChatSession : customer
+User "1" -- "0..*" ChatSession : marketing
+Produk "1" -- "0..*" ChatSession
+ChatSession "1" -- "0..*" ChatMessage
+ChatSession "1" -- "0..*" ChatFile
+User "1" -- "0..*" ChatMessage : sender
+User "1" -- "0..*" ChatFile : uploader
+
+' Relasi konten
+KategoriArtikel "1" -- "0..*" Artikel
+User "1" -- "0..*" Artikel : penulis
+User "1" -- "0..*" Testimoni
+User "1" -- "0..*" AnggotaTim
+User "1" -- "0..*" Faq
+User "1" -- "0..*" PesanKontak
+User "1" -- "0..*" PelangganNewsletter
+User "1" -- "0..*" PengaturanSitus
+
+' Susunan visual seperti versi sebelumnya
+Role -[hidden]right- Permission
+ModelHasRole -[hidden]down- RoleHasPermission
+KategoriLayanan -[hidden]right- KategoriArtikel
+Layanan -[hidden]right- Artikel
+Produk -[hidden]right- Testimoni
+Penawaran -[hidden]down- Proyek
+Proyek -[hidden]down- ChatSession
+ChatSession -[hidden]right- ChatMessage
+ChatMessage -[hidden]right- ChatFile
+KategoriArtikel -[hidden]down- Artikel
+Artikel -[hidden]down- Testimoni
+Testimoni -[hidden]down- AnggotaTim
+AnggotaTim -[hidden]down- Faq
+Faq -[hidden]down- PesanKontak
+PesanKontak -[hidden]down- PelangganNewsletter
+PelangganNewsletter -[hidden]down- PengaturanSitus
+@enduml

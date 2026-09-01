@@ -1,0 +1,19 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengonfirmasi hapus proyek
+View -> Controller : DELETE /proyek/{id}
+Controller -> Controller : Validasi hak akses
+alt Diizinkan
+ Controller -> Model : hapusProyek()
+ Model -> Database : DELETE proyek dan dokumentasi
+ Database --> Model : terhapus
+ Controller --> View : 200 pesan berhasil
+else Ditolak
+ Controller --> View : 403 akses ditolak
+end
+View --> Marketing : Menampilkan hasil
+@enduml

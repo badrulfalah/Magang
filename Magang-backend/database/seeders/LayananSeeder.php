@@ -70,22 +70,12 @@ class LayananSeeder extends Seeder
                 ]
             ],
             [
-                'name' => 'IT Consultant',
-                'subtitle' => 'Perencanaan arsitektur, konsultasi, dan optimalisasi sistem IT.',
-                'description' => 'Konsultasi profesional mengenai arsitektur sistem, infrastruktur cloud, dan keamanan data perusahaan Anda.',
-                'icon_id' => 'sparkles',
-                'items' => [
-                    [ 'num' => '01', 'title' => 'Konsultasi Arsitektur Sistem', 'badge' => 'POPULER', 'desc' => 'Analisis dan desain cetak biru arsitektur aplikasi enterprise yang aman, efisien, dan siap berkembang.', 'tag' => 'Consultant' ],
-                    [ 'num' => '02', 'title' => 'Audit Keamanan & Kinerja', 'badge' => null, 'desc' => 'Audit menyeluruh untuk mengidentifikasi celah keamanan server serta optimalisasi performa database.', 'tag' => 'Consultant' ]
-                ]
-            ],
-            [
                 'name' => 'Consulting',
                 'subtitle' => 'Konsultasi IT strategis dan blueprint solusi digital.',
                 'description' => 'Konsultasi mendalam mengenai arsitektur, integrasi, dan strategi teknologi bisnis.',
                 'icon_id' => 'consulting',
                 'items' => [
-                    [ 'num' => '01', 'title' => 'IT Consulting', 'badge' => 'UNGGULAN', 'desc' => 'Layanan analisis kebutuhan, mitigasi risiko, and pembuatan cetak biru teknologi bagi perusahaan.', 'tag' => 'Consulting' ]
+                    [ 'num' => '01', 'title' => 'Consulting', 'badge' => 'UNGGULAN', 'desc' => 'Layanan analisis kebutuhan, mitigasi risiko, and pembuatan cetak biru teknologi bagi perusahaan.', 'tag' => 'Consulting' ]
                 ]
             ],
             [
@@ -94,7 +84,7 @@ class LayananSeeder extends Seeder
                 'description' => 'Transfer pengetahuan teknologi kepada tim internal perusahaan Anda agar mandiri.',
                 'icon_id' => 'coaching',
                 'items' => [
-                    [ 'num' => '02', 'title' => 'IT Coaching', 'badge' => 'UNGGULAN', 'desc' => 'Pendampingan langsung tim developer internal untuk menerapkan arsitektur best-practice.', 'tag' => 'Coaching' ]
+                    [ 'num' => '02', 'title' => 'Coaching', 'badge' => 'UNGGULAN', 'desc' => 'Pendampingan langsung tim developer internal untuk menerapkan arsitektur best-practice.', 'tag' => 'Coaching' ]
                 ]
             ],
             [
@@ -103,7 +93,7 @@ class LayananSeeder extends Seeder
                 'description' => 'Pengawasan, orkestrasi, dan tata kelola implementasi proyek TI end-to-end.',
                 'icon_id' => 'management',
                 'items' => [
-                    [ 'num' => '03', 'title' => 'IT Project Management', 'badge' => 'UNGGULAN', 'desc' => 'Tata kelola proyek, manajemen timeline, dan kontrol kualitas penyerahan kode sistem.', 'tag' => 'Management' ]
+                    [ 'num' => '03', 'title' => 'Project Management', 'badge' => 'UNGGULAN', 'desc' => 'Tata kelola proyek, manajemen timeline, dan kontrol kualitas penyerahan kode sistem.', 'tag' => 'Management' ]
                 ]
             ],
             [
@@ -112,7 +102,7 @@ class LayananSeeder extends Seeder
                 'description' => 'Pendampingan operasional sistem informasi dan pemecahan masalah teknis harian.',
                 'icon_id' => 'assistance',
                 'items' => [
-                    [ 'num' => '04', 'title' => 'IT Technical Assistance', 'badge' => 'UNGGULAN', 'desc' => 'Dukungan teknis responsif harian dan pemantauan kinerja server pasca implementasi.', 'tag' => 'Assistance' ]
+                    [ 'num' => '04', 'title' => 'Technical Assistance', 'badge' => 'UNGGULAN', 'desc' => 'Dukungan teknis responsif harian dan pemantauan kinerja server pasca implementasi.', 'tag' => 'Assistance' ]
                 ]
             ]
         ];

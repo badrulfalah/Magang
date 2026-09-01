@@ -1,0 +1,25 @@
+@startuml
+actor Customer
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Customer -> View : Mengirim kebutuhan proyek
+View -> Controller : POST /crm/penawaran
+Controller -> Controller : Validasi kebutuhan customer
+alt Valid
+ Controller -> Model : buatProspek()
+ Model -> Database : INSERT customer dan proyek
+ Marketing -> View : Membuat penawaran
+ View -> Controller : POST /penawaran
+ Controller -> Model : simpanPenawaran()
+ Model -> Database : INSERT penawaran
+ Database --> Model : penawaran tersimpan
+ Model --> Controller : sukses
+ Controller --> View : 201 penawaran berhasil
+ View --> Customer : Menampilkan penawaran
+else Tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+@enduml

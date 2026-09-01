@@ -108,7 +108,7 @@ export default function ContactFormSection({ settings }) {
                 <label className="label px-0 py-1.5"><span className="text-xs font-semibold text-secondary/70">Nama Anda</span></label>
                 <input
                   type="text"
-                  className={`input input-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary/50 w-full text-sm rounded-xl ${contactErrors.nama ? 'input-error' : ''}`}
+                  className={`input input-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary focus:outline-none w-full text-sm rounded-xl ${contactErrors.nama ? 'input-error' : ''}`}
                   value={contactForm.nama}
                   onChange={(e) => setContactForm({ ...contactForm, nama: e.target.value })}
                   placeholder="Nama Anda"
@@ -122,7 +122,7 @@ export default function ContactFormSection({ settings }) {
                 <label className="label px-0 py-1.5"><span className="text-xs font-semibold text-secondary/70">Email</span></label>
                 <input
                   type="email"
-                  className={`input input-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary/50 w-full text-sm rounded-xl ${contactErrors.email ? 'input-error' : ''}`}
+                  className={`input input-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary focus:outline-none w-full text-sm rounded-xl ${contactErrors.email ? 'input-error' : ''}`}
                   value={contactForm.email}
                   onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                   placeholder="nama@email.com"
@@ -135,7 +135,7 @@ export default function ContactFormSection({ settings }) {
               <div className="form-control">
                 <label className="label px-0 py-1.5"><span className="text-xs font-semibold text-secondary/70">Kebutuhan singkat</span></label>
                 <textarea
-                  className={`textarea textarea-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary/50 h-28 w-full text-sm rounded-xl leading-relaxed ${contactErrors.pesan ? 'textarea-error' : ''}`}
+                  className={`textarea textarea-bordered border border-base-300 bg-base-50 focus:bg-base-100 focus:border-primary focus:outline-none h-28 w-full text-sm rounded-xl leading-relaxed ${contactErrors.pesan ? 'textarea-error' : ''}`}
                   value={contactForm.pesan}
                   onChange={(e) => setContactForm({ ...contactForm, pesan: e.target.value })}
                   placeholder="Saya butuh web app untuk... / EA untuk strategi..."

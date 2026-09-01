@@ -1,0 +1,19 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengubah informasi proyek
+View -> Controller : PUT /proyek/{id}
+Controller -> Controller : Validasi data perubahan
+alt Valid
+ Controller -> Model : ubahProyek()
+ Model -> Database : UPDATE proyek dan perkembangan
+ Database --> Model : perubahan tersimpan
+ Controller --> View : 200 data terbaru
+else Tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Marketing : Menampilkan hasil
+@enduml

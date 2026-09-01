@@ -1,0 +1,21 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Mengirim follow-up
+View -> Controller : POST /chat/follow-up
+Controller -> Controller : Validasi pesan dan customer
+alt Data valid
+ Controller -> Model : buatFollowUp()
+ Model -> Database : INSERT sesi dan pesan
+ Model -> Database : UPDATE pesan kontak
+ Database --> Model : follow-up tersimpan
+ Model --> Controller : chat follow-up
+ Controller --> View : 201 berhasil
+else Data tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Marketing : Menampilkan chat follow-up
+@enduml

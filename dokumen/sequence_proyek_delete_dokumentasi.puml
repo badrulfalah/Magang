@@ -1,0 +1,19 @@
+@startuml
+actor Marketing
+boundary View
+control Controller
+entity Model
+database Database
+Marketing -> View : Menghapus dokumentasi
+View -> Controller : DELETE /proyek/{id}/dokumentasi/{dokumen}
+Controller -> Controller : Validasi hak akses
+alt Diizinkan
+ Controller -> Model : hapusDokumentasi()
+ Model -> Database : DELETE dokumentasi
+ Database --> Model : terhapus
+ Controller --> View : 200 daftar terbaru
+else Ditolak
+ Controller --> View : 403 akses ditolak
+end
+View --> Marketing : Menampilkan hasil
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+actor Pengguna
+boundary View
+control Controller
+entity Model
+database Database
+Pengguna -> View : Memilih sesi chat
+View -> Controller : DELETE /chat/{id}
+Controller -> Controller : Validasi hak akses
+alt Diizinkan
+ Controller -> Model : hapusSesi()
+ Model -> Database : DELETE sesi dan file terkait
+ Database --> Model : penghapusan selesai
+ Model --> Controller : sukses
+ Controller --> View : 200 daftar chat terbaru
+else Ditolak
+ Controller --> View : 403 akses ditolak
+end
+View --> Pengguna : Menampilkan hasil
+@enduml

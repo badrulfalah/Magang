@@ -42,6 +42,7 @@ Route::post('/register', [AuthController::class, 'register']);
         Route::get('/produk', [ProdukController::class, 'index']);
         Route::get('/produk/{slug}', [ProdukController::class, 'showBySlug']);
         Route::get('/clients', [PublicContentController::class, 'clients']);
+        Route::get('/online-marketings', [PublicContentController::class, 'onlineMarketings']);
     });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile/ping', [ProfileController::class, 'ping']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
@@ -133,7 +135,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/chats/{id}', [ChatController::class, 'destroy']);
     Route::post('/chats/{id}/messages', [ChatController::class, 'sendMessage']);
     Route::post('/chats/{id}/files', [ChatController::class, 'uploadFile']);
-    Route::post('/chats/{id}/claim', [ChatController::class, 'claimChat']);
+
     Route::put('/chats/{id}/status', [ChatController::class, 'updateStatus']);
     Route::put('/chats/{id}/messages/{messageId}', [ChatController::class, 'updateMessage']);
     Route::delete('/chats/{id}/messages/{messageId}', [ChatController::class, 'deleteMessage']);

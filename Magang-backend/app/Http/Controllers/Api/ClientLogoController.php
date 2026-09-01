@@ -30,6 +30,7 @@ class ClientLogoController extends Controller
         ]);
 
         $data = $request->only('nama_perusahaan', 'urutan');
+        $data['dibuat_oleh'] = $request->user()->id;
         if ($request->hasFile('logo')) {
             $data['logo_path'] = $request->file('logo')->store('client_logos', 'public');
         }

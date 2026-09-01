@@ -76,4 +76,10 @@ class ProfileController extends Controller
             'avatar_url' => Storage::disk('public')->url($path),
         ]);
     }
+
+    public function ping(Request $request)
+    {
+        $request->user()->update(['last_seen' => now()]);
+        return response()->json(['status' => 'success']);
+    }
 }

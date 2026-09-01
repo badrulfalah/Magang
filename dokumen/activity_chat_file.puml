@@ -1,0 +1,53 @@
+@startuml
+skinparam style strictuml
+skinparam dpi 180
+skinparam activityMinimumWidth 220
+skinparam activityPadding 18
+skinparam activityShape rectangle
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam linetype ortho
+skinparam defaultFontSize 13
+skinparam activityFontSize 13
+skinparam activityBorderThickness 1
+skinparam ArrowThickness 2
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneBorderThickness 2
+skinparam partitionBorderColor #000000
+skinparam partitionBorderThickness 2
+skinparam partitionBackgroundColor #FFFFFF
+skinparam BackgroundColor #FFFFFF
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #000000
+skinparam ActivityStartColor #000000
+skinparam ActivityEndColor #000000
+skinparam ArrowColor #000000
+skinparam SwimlaneBorderColor #000000
+skinparam SwimlaneTitleBackgroundColor #FFFFFF
+skinparam SwimlaneTitleFontColor #000000
+
+title Aktivitas: Mengelola File Chat
+|Pengguna|
+start
+:Pilih percakapan;
+if (Upload file?) then (ya)
+  :Pilih file;
+  :Isi keterangan file;
+  :Klik "Upload";
+  |Sistem|
+  :Menyimpan file;
+  :Menampilkan file di percakapan;
+else (tidak)
+  :Pilih file yang sudah dikirim;
+  if (Ingin mengubah file?) then (ya)
+    :Ganti file atau keterangan;
+    |Sistem|
+    :Menyimpan perubahan file;
+  else (tidak)
+    :Konfirmasi penghapusan file;
+    |Sistem|
+    :Menghapus file dari percakapan;
+  endif
+endif
+stop
+@enduml

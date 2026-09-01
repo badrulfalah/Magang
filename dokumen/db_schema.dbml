@@ -1,0 +1,281 @@
+// ===================================================
+// MODUL 1: PENGGUNA & AUTHENTICATION
+// ===================================================
+
+Table users {
+  id bigint [pk, increment]
+  name varchar
+  avatar varchar [null]
+  email varchar [unique]
+  phone varchar [null]
+  status varchar [default: 'aktif']
+  google_id varchar [unique, null]
+  email_verified_at timestamp [null]
+  password varchar
+  remember_token varchar [null]
+  last_seen timestamp [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table password_reset_tokens {
+  email varchar [pk, ref: > users.email]
+  token varchar
+  created_at timestamp [null]
+}
+
+Table sessions {
+  id varchar [pk]
+  user_id bigint [null, ref: > users.id]
+  ip_address varchar(45) [null]
+  user_agent text [null]
+  payload longtext
+  last_activity integer
+}
+
+Table roles {
+  id bigint [pk, increment]
+  name varchar
+  guard_name varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table permissions {
+  id bigint [pk, increment]
+  name varchar
+  guard_name varchar
+  modul varchar [null]
+  panel varchar [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table model_has_roles {
+  role_id bigint [ref: > roles.id]
+  model_type varchar
+  model_id bigint [ref: > users.id]
+
+  indexes {
+    (role_id, model_id, model_type) [pk]
+  }
+}
+
+Table role_has_permissions {
+  permission_id bigint [ref: > permissions.id]
+  role_id bigint [ref: > roles.id]
+
+  indexes {
+    (permission_id, role_id) [pk]
+  }
+}
+
+// ===================================================
+// MODUL 2: LAYANAN & PRODUK
+// ===================================================
+
+Table kategori_layanan {
+  id_kategori_layanan bigint [pk, increment]
+  slug varchar [unique]
+  name varchar
+  subtitle varchar [null]
+  description text [null]
+  icon_id varchar [default: 'code']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table layanan {
+  id_layanan bigint [pk, increment]
+  id_kategori_layanan bigint [ref: > kategori_layanan.id_kategori_layanan]
+  num varchar
+  title varchar
+  badge varchar [null]
+  desc text
+  tag varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table produks {
+  id_produk bigint [pk, increment]
+  nama varchar
+  slug varchar [unique]
+  foto_sampul varchar [null]
+  deskripsi_singkat text [null]
+  deskripsi text [null]
+  spesifikasi text [null]
+  status varchar [default: 'aktif']
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ===================================================
+// MODUL 3: BLOG / ARTIKEL
+// ===================================================
+
+Table kategori_artikel {
+  id_kategori_artikel bigint [pk, increment]
+  nama_kategori varchar
+}
+
+Table artikel {
+  id_artikel bigint [pk, increment]
+  id_kategori_artikel bigint [ref: > kategori_artikel.id_kategori_artikel]
+  id_penulis bigint [ref: > users.id]
+  judul varchar
+  slug varchar [unique]
+  konten text
+  foto_sampul varchar [null]
+  status varchar [default: 'draft']
+  dipublikasikan_pada datetime [null]
+}
+
+// ===================================================
+// MODUL 4: INTERAKSI & TRANSAKSI BISNIS
+// ===================================================
+
+Table chat_sessions {
+  id bigint [pk, increment]
+  customer_id bigint [ref: > users.id]
+  product_id bigint [null, ref: > produks.id_produk]
+  marketing_id bigint [null, ref: > users.id]
+  status varchar [default: 'Ketertarikan']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table chat_messages {
+  id bigint [pk, increment]
+  chat_session_id bigint [ref: > chat_sessions.id]
+  sender_id bigint [ref: > users.id]
+  message text
+  is_edited boolean [default: false]
+  is_read boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table chat_files {
+  id bigint [pk, increment]
+  chat_session_id bigint [ref: > chat_sessions.id]
+  uploader_id bigint [ref: > users.id]
+  file_path varchar
+  file_name varchar
+  keterangan varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table penawarans {
+  id bigint [pk, increment]
+  marketing_id bigint [ref: > users.id]
+  customer_id bigint [ref: > users.id]
+  produk_id bigint [null, ref: > produks.id_produk]
+  layanan_id bigint [null, ref: > layanan.id_layanan]
+  judul varchar
+  deskripsi text
+  harga decimal(15,2) [null]
+  brosur_path varchar [null]
+  status varchar [default: 'pending']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table proyeks {
+  id bigint [pk, increment]
+  penawaran_id bigint [null, ref: > penawarans.id]
+  customer_id bigint [ref: > users.id]
+  layanan_id bigint [null, ref: > layanan.id_layanan]
+  nama_proyek varchar
+  deskripsi_kebutuhan text
+  progress integer [default: 0]
+  status_proyek varchar [default: 'pengajuan']
+  tanggal_mulai date [null]
+  tanggal_selesai date [null]
+  timeline json [null]
+  dokumentasi json [null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ===================================================
+// MODUL 5: PENDUKUNG & PENGATURAN SITUS
+// ===================================================
+
+Table faq {
+  id_faq bigint [pk, increment]
+  dibuat_oleh bigint [ref: > users.id]
+  pertanyaan varchar
+  jawaban text
+  urutan integer [default: 0]
+}
+
+Table anggota_tim {
+  id_anggota bigint [pk, increment]
+  dibuat_oleh bigint [ref: > users.id]
+  nama varchar
+  jabatan varchar
+  foto varchar [null]
+  urutan integer [default: 0]
+}
+
+Table testimoni {
+  id_testimoni bigint [pk, increment]
+  id_user bigint [null, ref: > users.id]
+  nama_klien varchar
+  jabatan varchar [null]
+  isi_testimoni text
+  rating integer
+  foto varchar [null]
+  status varchar [default: 'pending']
+  dibuat_pada datetime
+}
+
+Table pesan_kontak {
+  id_pesan_kontak bigint [pk, increment]
+  id_user bigint [null, ref: > users.id]
+  nama varchar
+  email varchar
+  no_hp varchar [null]
+  subjek varchar
+  pesan text
+  status varchar [default: 'new']
+  dikirim_pada datetime
+}
+
+Table pelanggan_newsletter {
+  id_newsletter bigint [pk, increment]
+  id_user bigint [null, ref: > users.id]
+  email varchar [unique]
+  status varchar [default: 'active']
+  berlangganan_pada datetime
+}
+
+Table pengaturan_situs {
+  id_pengaturan bigint [pk, increment]
+  diubah_oleh bigint [null, ref: > users.id]
+  kunci varchar [unique]
+  nilai text
+}
+
+Table client_logos {
+  id bigint [pk, increment]
+  dibuat_oleh bigint [ref: > users.id]
+  nama_perusahaan varchar
+  logo_path varchar
+  urutan integer [default: 0]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table keunggulans {
+  id bigint [pk, increment]
+  dibuat_oleh bigint [ref: > users.id]
+  judul varchar
+  deskripsi text
+  icon varchar [null]
+  urutan integer [default: 0]
+  created_at timestamp
+  updated_at timestamp
+}

@@ -192,23 +192,6 @@ export default function ChatCenter() {
     }, 'Hapus Topik Konsultasi')
   }
 
-  const handleClaimChat = async () => {
-    console.log('Claiming chat for session ID:', activeSession?.id);
-    if (!activeSession || isCustomer) {
-      console.log('Claim aborted. activeSession:', activeSession, 'isCustomer:', isCustomer);
-      return;
-    }
-    try {
-      const res = await api.post(`/chats/${activeSession.id}/claim`)
-      console.log('Claim success response:', res.data);
-      setActiveSession(res.data)
-      fetchSessions(res.data.id)
-    } catch (err) {
-      console.error('Claim failed with error:', err);
-      alert('Gagal mengklaim obrolan.')
-    }
-  }
-
   const handleUpdateStatus = async (status) => {
     if (!activeSession || isCustomer) return
     try {
@@ -659,19 +642,7 @@ export default function ChatCenter() {
 
             {/* Chat Input form */}
             <div className="p-4 border-t border-base-300 bg-base-100 shrink-0">
-              {!isCustomer && !activeSession.marketing_id ? (
-                // Obrolan belum diklaim oleh marketing
-                <div className="flex flex-col items-center justify-center gap-2.5 py-2">
-                  <p className="text-xs text-base-content/60 font-semibold">Obrolan ini belum diklaim oleh tim marketing.</p>
-                  <button
-                    onClick={handleClaimChat}
-                    className="btn btn-primary btn-sm rounded-xl text-white font-bold px-6 border-0 shadow-md shadow-primary/20"
-                  >
-                    Klaim Obrolan & Jawab Client
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSendMessage} className="flex gap-2">
+              <form onSubmit={handleSendMessage} className="flex gap-2">
                   <input
                     type="text"
                     className="input input-bordered rounded-xl flex-1 text-sm focus:border-primary/50 focus:outline-none"
@@ -688,7 +659,6 @@ export default function ChatCenter() {
                     Kirim
                   </button>
                 </form>
-              )}
             </div>
           </>
         ) : (

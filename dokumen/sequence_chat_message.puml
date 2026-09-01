@@ -1,0 +1,20 @@
+@startuml
+actor Pengguna
+boundary View
+control Controller
+entity Model
+ database Database
+Pengguna -> View : Mengirim pesan
+View -> Controller : POST /chat/{id}/messages
+Controller -> Controller : Validasi isi pesan
+alt Data valid
+ Controller -> Model : simpanPesan()
+ Model -> Database : INSERT pesan
+ Database --> Model : pesan tersimpan
+ Model --> Controller : pesan baru
+ Controller --> View : 201 pesan berhasil
+else Data tidak valid
+ Controller --> View : 422 tampilkan kesalahan
+end
+View --> Pengguna : Menampilkan hasil
+@enduml
