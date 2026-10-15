@@ -290,14 +290,8 @@ export default function ChatCenter() {
     if (message.includes('menjadi "Deal"')) {
       return 'bg-emerald-50 text-emerald-700 border-emerald-200/60 font-bold'
     }
-    if (message.includes('menjadi "Proses Pengerjaan"')) {
-      return 'bg-purple-50 text-purple-700 border-purple-200/60'
-    }
-    if (message.includes('menjadi "Selesai"')) {
-      return 'bg-green-600 text-white border-green-700 font-bold'
-    }
-    if (message.includes('menjadi "Maintenance"')) {
-      return 'bg-teal-50 text-teal-700 border-teal-200/60'
+    if (message.includes('menjadi "Arsip"')) {
+      return 'bg-gray-100 text-gray-500 border-gray-300'
     }
     if (message.includes('telah diklaim oleh')) {
       return 'bg-indigo-50 text-indigo-700 border-indigo-200/60 font-semibold'
@@ -314,9 +308,7 @@ export default function ChatCenter() {
       case 'Ditindaklanjuti': return 'bg-amber-100 text-amber-700 border-amber-300'
       case 'Penawaran': return 'bg-purple-100 text-purple-700 border-purple-300'
       case 'Deal': return 'bg-emerald-100 text-emerald-700 border-emerald-300'
-      case 'Proses Pengerjaan': return 'bg-indigo-100 text-indigo-700 border-indigo-300'
-      case 'Selesai': return 'bg-green-100 text-green-700 border-green-300'
-      case 'Maintenance': return 'bg-teal-100 text-teal-700 border-teal-300'
+      case 'Arsip': return 'bg-gray-100 text-gray-500 border-gray-300'
       default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
@@ -365,7 +357,7 @@ export default function ChatCenter() {
                 </svg>
                 <p className="text-xs font-bold">Belum ada obrolan</p>
                 <p className="text-[10px] leading-relaxed">
-                  {isCustomer ? 'Silakan tanya tim kami dari halaman produk/katalog.' : 'Belum ada obrolan masuk dari customer.'}
+                  {isCustomer ? 'Silakan tanya tim kami dari halaman produk/layanan.' : 'Belum ada obrolan masuk dari customer.'}
                 </p>
               </div>
             ) : (
@@ -403,7 +395,7 @@ export default function ChatCenter() {
                       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <div className="flex justify-between items-start gap-1 w-full group/sess">
                           <span className="font-extrabold text-xs truncate max-w-[110px]">
-                            {isCustomer ? (sess.product?.nama || 'Pertanyaan Umum') : sess.customer?.name}
+                            {isCustomer ? (sess.product?.nama || sess.layanan?.title || 'Pertanyaan Umum') : sess.customer?.name}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             <button
@@ -423,7 +415,7 @@ export default function ChatCenter() {
                             {isCustomer ? 'Marketing / CS:' : 'Produk:'}
                           </span>
                           <span className="font-semibold truncate">
-                            {isCustomer ? (sess.marketing?.name || 'Menunggu Respons Marketing') : (sess.product?.nama || 'Pertanyaan Umum')}
+                            {isCustomer ? (sess.marketing?.name || 'Menunggu Respons Marketing') : (sess.product?.nama || sess.layanan?.title || 'Pertanyaan Umum')}
                           </span>
                         </div>
                       </div>
@@ -455,10 +447,10 @@ export default function ChatCenter() {
             <div className="px-5 py-3 border-b border-base-300 flex items-center justify-between shrink-0 bg-base-100 shadow-sm">
               <div className="min-w-0 flex-1">
                 <h3 className="font-black text-secondary text-sm truncate">
-                  {isCustomer ? (activeSession.product?.nama || 'Pertanyaan Umum') : activeSession.customer?.name}
+                  {isCustomer ? (activeSession.product?.nama || activeSession.layanan?.title || 'Pertanyaan Umum') : activeSession.customer?.name}
                 </h3>
                 <p className="text-[10px] text-base-content/50 font-bold truncate mt-0.5">
-                  {isCustomer ? `Marketing / CS: ${activeSession.marketing?.name || 'Menunggu respons'}` : `Produk: ${activeSession.product?.nama || 'Pertanyaan Umum'}`}
+                  {isCustomer ? `Marketing / CS: ${activeSession.marketing?.name || 'Menunggu respons'}` : `Produk: ${activeSession.product?.nama || activeSession.layanan?.title || 'Pertanyaan Umum'}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -507,6 +499,24 @@ export default function ChatCenter() {
                 </div>
               )}
 
+              {/* Layanan Info Box */}
+              {activeSession.layanan && !activeSession.product && (
+                <div className="bg-white border border-primary/20 rounded-2xl p-3 flex gap-3 shadow-sm max-w-md mx-auto items-center">
+                  <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">Layanan yang Ditanyakan</span>
+                    <h4 className="font-bold text-xs text-secondary mt-1 truncate" title={activeSession.layanan.title}>
+                      {activeSession.layanan.title}
+                    </h4>
+                    <p className="text-[10px] text-base-content/60 truncate mt-0.5">{activeSession.layanan.desc}</p>
+                  </div>
+                </div>
+              )}
+
               {loadingMessages ? (
                 <div className="flex justify-center items-center h-full">
                   <span className="loading loading-spinner loading-md text-primary"></span>
@@ -514,11 +524,11 @@ export default function ChatCenter() {
               ) : messages.length === 0 ? (
                 <div className="h-full flex flex-col justify-center items-center text-center text-base-content/40 px-4 space-y-1">
                   <p className="text-xs font-bold">Mulai Percakapan</p>
-                  <p className="text-[10px]">Tanyakan detail produk, nego harga, atau kirim berkas dokumen di sini.</p>
+                  <p className="text-[10px]">Tanyakan detail produk/layanan, nego harga, atau kirim berkas dokumen di sini.</p>
                 </div>
               ) : (
                 messages
-                  .filter(msg => !isCustomer || !msg.message.startsWith('[Sistem] Tahapan pengerjaan diubah'))
+                  .filter(msg => !isCustomer || !(msg.message.startsWith('[Sistem] Tahapan pengerjaan diubah') || msg.message.startsWith('[Sistem] Tahapan lead diubah')))
                   .map((msg) => {
                   const isSystem = msg.message.startsWith('[Sistem]')
                   

@@ -96,9 +96,11 @@ class PenawaranController extends Controller
             'status' => 'required|in:diterima,ditolak',
         ]);
 
-        $penawaran->update([
-            'status' => $request->status
-        ]);
+        $updateData = ['status' => $request->status];
+        if ($request->status === 'diterima') {
+            $updateData['tanggal_deal'] = now();
+        }
+        $penawaran->update($updateData);
 
         // Jika diterima, buat proyek secara otomatis
         if ($request->status === 'diterima') {

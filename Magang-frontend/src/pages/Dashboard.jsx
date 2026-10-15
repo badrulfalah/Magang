@@ -36,10 +36,12 @@ export default function Dashboard() {
   // Customer specific states
   const [customerStats, setCustomerStats] = useState({
     activeProjects: 0,
+    pendingProjects: 0,
     consultationsCount: 0,
     supportTickets: 0,
     accountStatus: 'Aktif',
-    recentMessages: []
+    recentMessages: [],
+    recentProyeks: []
   })
 
   // Modal detail pesan formulir
@@ -292,8 +294,9 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-6">
                 {((isMarketing ? marketingStats.allLeads : stats.allLeads) || []).map((lead) => {
-                  const stages = ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran', 'Deal', 'Proses Pengerjaan', 'Selesai', 'Maintenance'];
+                  const stages = ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran', 'Deal'];
                   const currentIndex = stages.indexOf(lead.status);
+                  const isArsip = lead.status === 'Arsip';
                   
                   return (
                     <div key={lead.id} className="p-5 bg-base-50 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-4">
@@ -309,40 +312,60 @@ export default function Dashboard() {
                           <span className="text-[10px] text-base-content/40 font-bold">Marketing:</span>
                           <span className="text-[11px] font-semibold text-secondary">{lead.marketing?.name || 'Marketing Kurva'}</span>
                           
-                          {/* Dropdown status update */}
-                          {!isCustomer && (
-                            <div className="dropdown dropdown-end ml-1">
-                              <div tabIndex={0} role="button" className="btn btn-xs rounded-full border px-3 text-[10px] font-bold h-6 flex items-center gap-1.5 shadow-sm bg-white hover:bg-base-200">
-                                Ubah Status
+                          {isArsip ? (
+                            <span className="badge badge-ghost badge-sm rounded-full text-[10px] font-bold text-base-content/50 ml-1">Diarsipkan</span>
+                          ) : !isCustomer && (
+                            <>
+                              {/* Dropdown status update */}
+                              <div className="dropdown dropdown-end ml-1">
+                                <div tabIndex={0} role="button" className="btn btn-xs rounded-full border px-3 text-[10px] font-bold h-6 flex items-center gap-1.5 shadow-sm bg-white hover:bg-base-200">
+                                  Ubah Status
+                                </div>
+                                <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-2xl w-48 border border-base-200 mt-1 z-[100] space-y-1">
+                                  {stages.map((st) => (
+                                    <li key={st}>
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await api.put(`/chats/${lead.id}/status`, { status: st });
+                                            // Refresh data
+                                            window.location.reload();
+                                          } catch (e) {
+                                            alert('Gagal memperbarui status');
+                                          }
+                                        }}
+                                        className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${
+                                          lead.status === st ? 'bg-base-200' : 'hover:bg-base-50'
+                                        }`}
+                                      >
+                                        <span>{st}</span>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
-                              <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-2xl w-48 border border-base-200 mt-1 z-[100] space-y-1">
-                                {stages.map((st) => (
-                                  <li key={st}>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          await api.put(`/chats/${lead.id}/status`, { status: st });
-                                          // Refresh data
-                                          window.location.reload();
-                                        } catch (e) {
-                                          alert('Gagal memperbarui status');
-                                        }
-                                      }}
-                                      className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${
-                                        lead.status === st ? 'bg-base-200' : 'hover:bg-base-50'
-                                      }`}
-                                    >
-                                      <span>{st}</span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                              {/* Tombol Arsipkan Lead */}
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Arsipkan lead ini? Lead akan hilang dari dashboard aktif.')) return;
+                                  try {
+                                    await api.put(`/chats/${lead.id}/status`, { status: 'Arsip' });
+                                    window.location.reload();
+                                  } catch (e) {
+                                    alert('Gagal mengarsipkan lead');
+                                  }
+                                }}
+                                className="btn btn-xs rounded-full px-3 text-[10px] font-bold h-6 flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100"
+                              >
+                                Arsipkan Lead
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
 
                       {/* Bulat-bulat progress track record */}
+                      {!isArsip && (
                       <div className="w-full py-4 relative px-4 overflow-x-auto custom-scrollbar">
                         <div className="min-w-[700px] relative py-4">
                           {/* Progress Bar background line */}
@@ -389,6 +412,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
                   );
                 })}
@@ -571,7 +595,8 @@ export default function Dashboard() {
 
   // ══════════════════════════════ CUSTOMER (PORTAL KLIEN) VIEW ══════════════════════════════
   const customerCards = [
-    { label: 'Proyek Aktif', value: customerStats.activeProjects, icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z', color: 'text-primary bg-primary/10 border-primary/20' },
+    { label: 'Proyek Aktif (Berjalan)', value: customerStats.activeProjects, icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z', color: 'text-primary bg-primary/10 border-primary/20' },
+    { label: 'Menunggu Validasi', value: customerStats.pendingProjects || 0, icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-amber-600 bg-amber-500/10 border-amber-500/20' },
     { label: 'Konsultasi Diajukan', value: customerStats.consultationsCount, icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', color: 'text-primary bg-primary/10 border-primary/20' },
     { label: 'Penawaran Pending', value: customerStats.supportTickets, icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', color: 'text-primary bg-primary/10 border-primary/20' }
   ]
@@ -613,7 +638,7 @@ export default function Dashboard() {
           <span className="h-2 w-2 rounded-full bg-primary"></span>
           Aktivitas Portal Klien
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {customerCards.map((card) => (
             <div 
               key={card.label} 
@@ -669,31 +694,196 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── TRACK RECORD PROGRES PROYEK ANDA (POV CUSTOMER - 4 TAHAPAN RINGKAS) ── */}
+      {customerStats.recentProyeks?.some(p => p.status_proyek !== 'pengajuan' && p.status_proyek !== 'ditolak') && (
+        <div className="card bg-base-100 rounded-3xl border border-base-200 shadow-sm">
+          <div className="card-body p-6">
+            <div className="flex items-center justify-between border-b border-base-200 pb-3 mb-4">
+              <div>
+                <h3 className="text-base font-bold text-base-content flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Track Record Progres Layanan &amp; Proyek Anda
+                </h3>
+                <p className="text-xs text-base-content/50 mt-0.5">Pantau real-time tahapan pengerjaan proyek Anda bersama tim Kurva</p>
+              </div>
+              <Link to="/admin/proyek" className="text-xs font-semibold text-primary hover:underline">
+                Kelola Proyek &rarr;
+              </Link>
+            </div>
+
+            <div className="space-y-6">
+              {customerStats.recentProyeks
+                .filter(p => p.status_proyek !== 'pengajuan' && p.status_proyek !== 'ditolak')
+                .map((proj) => {
+                  // Khusus Customer hanya 4 tahapan ringkas: Deal -> Proses Pengerjaan -> Selesai -> Maintenance
+                  const customerStages = ['Deal', 'Proses Pengerjaan', 'Selesai', 'Maintenance'];
+                  
+                  let norm = proj.status_proyek;
+                  if (norm === 'planning' || ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran'].includes(norm)) {
+                    norm = 'Deal';
+                  } else if (norm === 'on progress' || norm === 'testing') {
+                    norm = 'Proses Pengerjaan';
+                  } else if (norm === 'selesai' || norm === 'Arsip') {
+                    norm = 'Selesai';
+                  }
+
+                  const curIdx = customerStages.indexOf(norm);
+
+                  return (
+                    <div key={proj.id} className="p-5 bg-base-50 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-base-200/50 pb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-sm text-secondary">{proj.nama_proyek}</h4>
+                            <span className={`badge badge-sm font-bold text-[10px] border-0 rounded-full px-2.5 ${
+                              proj.status_proyek === 'Arsip' ? 'bg-slate-200 text-slate-700' :
+                              proj.status_proyek === 'Selesai' || proj.status_proyek === 'selesai' ? 'bg-emerald-100 text-emerald-700' :
+                              proj.status_proyek === 'Maintenance' ? 'bg-teal-100 text-teal-700' :
+                              proj.status_proyek === 'Proses Pengerjaan' ? 'bg-indigo-100 text-indigo-700' :
+                              'bg-primary/10 text-primary'
+                            }`}>
+                              {proj.status_proyek}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-base-content/50 mt-0.5">
+                            Layanan: <span className="font-bold text-secondary">{proj.layanan?.title || 'Pengembangan Kustom TI'}</span> • Progress: <span className="font-bold text-primary">{proj.progress}%</span>
+                          </p>
+                        </div>
+                        <Link to="/admin/proyek" className="btn btn-xs rounded-xl bg-white border border-[#DCE6E1] text-secondary font-bold hover:bg-base-200 self-start sm:self-auto">
+                          Lihat Detail Proyek
+                        </Link>
+                      </div>
+
+                      {/* Stepper Ringkas 4 Tahap Khusus Customer: Deal -> Proses Pengerjaan -> Selesai -> Maintenance */}
+                      <div className="w-full py-4 relative px-4 overflow-x-auto custom-scrollbar">
+                        <div className="min-w-[420px] max-w-2xl mx-auto relative py-4">
+                          <div className="absolute top-[28px] left-10 right-10 h-[3px] bg-base-300 rounded-full z-0">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                              style={{ width: `${(Math.max(0, curIdx) / (customerStages.length - 1)) * 100}%` }}
+                            />
+                          </div>
+                          
+                          <div className="relative z-10 flex justify-between items-start w-full">
+                            {customerStages.map((st, idx) => {
+                              const active = curIdx >= 0 && idx <= curIdx;
+                              const isCurrent = idx === curIdx;
+                              
+                              return (
+                                <div key={st} className="flex flex-col items-center gap-2 group/dot relative w-24">
+                                  <div 
+                                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm shrink-0 ${
+                                      active 
+                                        ? 'bg-emerald-500 text-white scale-110 ring-4 ring-emerald-500/20' 
+                                        : 'bg-white text-base-content/30 border-2 border-base-300'
+                                    }`}
+                                  >
+                                    {active ? (
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    ) : (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-base-300" />
+                                    )}
+                                  </div>
+                                  <span 
+                                    className={`text-[10px] font-bold tracking-tight text-center w-full leading-tight select-none mt-1 ${
+                                      isCurrent ? 'text-emerald-600 font-extrabold' : 'text-base-content/40'
+                                    }`}
+                                  >
+                                    {st}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lists / Dynamic Overview Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         
         {/* Proyek Aktif */}
         <div className="card bg-base-100 rounded-3xl border border-base-200 shadow-sm">
           <div className="card-body p-6">
-            <h3 className="text-base font-bold text-base-content border-b border-base-200 pb-3 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              Daftar Layanan &amp; Proyek Aktif
-            </h3>
-            
-            <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center text-base-content/30">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            <div className="flex items-center justify-between border-b border-base-200 pb-3 mb-2">
+              <h3 className="text-base font-bold text-base-content flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-secondary">Belum Ada Proyek Aktif</p>
-                <p className="text-xs text-base-content/50 mt-1 max-w-xs mx-auto">Silakan hubungi kami untuk mendiskusikan implementasi proyek teknologi Anda.</p>
-              </div>
-              <Link to="/layanan" className="btn btn-primary btn-xs rounded-lg px-3 text-white border-none mt-2">Jelajahi Solusi</Link>
+                Proyek &amp; Pengajuan Layanan
+              </h3>
+              <Link to="/admin/proyek" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+                Buka Proyek
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
             </div>
+            
+            {(customerStats.recentProyeks || []).length === 0 ? (
+              <div className="py-8 flex flex-col items-center justify-center text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center text-base-content/30">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-secondary">Belum Ada Proyek Terdaftar</p>
+                  <p className="text-xs text-base-content/50 mt-1 max-w-xs mx-auto">Silakan ajukan brief proyek baru untuk mendiskusikan implementasi teknologi Anda.</p>
+                </div>
+                <Link to="/admin/proyek" className="btn btn-primary btn-xs rounded-lg px-3 text-white border-none mt-2">Ajukan Proyek</Link>
+              </div>
+            ) : (
+              <div className="space-y-3 divide-y divide-base-200">
+                {(customerStats.recentProyeks || []).map((p) => {
+                  const isPengajuan = p.status_proyek === 'pengajuan';
+                  const isDitolak = p.status_proyek === 'ditolak';
+                  const isSelesai = p.status_proyek === 'selesai';
+
+                  return (
+                    <div key={p.id} className="pt-3 first:pt-0 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-extrabold text-xs text-secondary truncate">{p.nama_proyek}</p>
+                          <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full uppercase ${
+                            isDitolak ? 'bg-rose-100 text-rose-700' :
+                            isPengajuan ? 'bg-amber-100 text-amber-700 animate-pulse' :
+                            isSelesai ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-primary/10 text-primary'
+                          }`}>
+                            {isPengajuan ? 'Menunggu Validasi' : p.status_proyek}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-base-content/50 truncate mt-0.5">
+                          {p.layanan?.title || 'Pengembangan TI'} • {isPengajuan ? 'Belum aktif, tunggu konfirmasi marketing' : `Progress: ${p.progress}%`}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isPengajuan && !isDitolak && (
+                          <div className="hidden sm:block w-16">
+                            <progress className="progress progress-primary w-full h-1.5" value={p.progress} max="100"></progress>
+                          </div>
+                        )}
+                        <Link to="/admin/proyek" className="btn btn-ghost btn-xs text-primary font-bold">
+                          Detail &rarr;
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

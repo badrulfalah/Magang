@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { useAuth } from '../../context/useAuth'
 import AjukanProyek from './AjukanProyek'
+import Toast from '../../components/Toast'
 
 export default function Proyek() {
   const { user, hasPermission } = useAuth()
@@ -28,6 +29,11 @@ export default function Proyek() {
   const [tanggalSelesaiInput, setTanggalSelesaiInput] = useState('')
   const [isEditingKontrak, setIsEditingKontrak] = useState(false)
   
+  // Validation modal state
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [alasanTolak, setAlasanTolak] = useState('')
+  const [validating, setValidating] = useState(false)
+
   // Timeline management states
   const [newMilestoneJudul, setNewMilestoneJudul] = useState('')
   const [newMilestoneDesc, setNewMilestoneDesc] = useState('')
@@ -78,17 +84,58 @@ export default function Proyek() {
     setMode('detail')
   }
 
+  // Helper status progress mapping
+  const getProgressByStatus = (st) => {
+    switch (st) {
+      case 'pengajuan': return 0
+      case 'ditolak': return 0
+      case 'Proses Pengerjaan': return 70
+      case 'Selesai': return 90
+      case 'Maintenance': return 95
+      case 'Arsip': return 100
+      // fallback legacy data lama
+      case 'planning': return 25
+      case 'on progress': return 70
+      case 'testing': return 85
+      case 'selesai': return 100
+      case 'Ketertarikan': return 10
+      case 'Ditindaklanjuti': return 25
+      case 'Penawaran': return 40
+      case 'Deal': return 50
+      default: return 0
+    }
+  }
+
+  // Handle update status tahapan via stepper
+  const handleUpdateStatusStepper = async (newStatus) => {
+    if (!activeProyek) return
+    const calculatedProgress = getProgressByStatus(newStatus)
+    try {
+      const res = await api.put(`/proyek/${activeProyek.id}`, {
+        nama_proyek: activeProyek.nama_proyek,
+        deskripsi_kebutuhan: activeProyek.deskripsi_kebutuhan,
+        progress: calculatedProgress,
+        status_proyek: newStatus,
+        tanggal_mulai: tanggalMulaiInput,
+        tanggal_selesai: tanggalSelesaiInput,
+        timeline: activeProyek.timeline
+      })
+      showToast(`Status berhasil diubah menjadi "${newStatus}"`)
+      setActiveProyek(res.data)
+      setStatusInput(res.data.status_proyek)
+      fetchProyeks(res.data.id)
+    } catch (err) {
+      console.error(err)
+      showToast('Gagal memperbarui status tahapan.', 'error')
+    }
+  }
+
   // Update proyek progress & status & timeline
   const handleUpdateProyek = async (e) => {
     e.preventDefault()
     if (!activeProyek) return
 
-    // Tentukan progress secara otomatis berdasarkan status proyek
-    let calculatedProgress = 0
-    if (statusInput === 'planning') calculatedProgress = 20
-    else if (statusInput === 'on progress') calculatedProgress = 50
-    else if (statusInput === 'testing') calculatedProgress = 80
-    else if (statusInput === 'selesai') calculatedProgress = 100
+    const calculatedProgress = getProgressByStatus(statusInput)
 
     try {
       const res = await api.put(`/proyek/${activeProyek.id}`, {
@@ -106,6 +153,29 @@ export default function Proyek() {
     } catch (err) {
       console.error(err)
       alert('Gagal memperbarui proyek.')
+    }
+  }
+
+  // Handle validasi (Terima / Tolak Pengajuan)
+  const handleValidasi = async (aksi, alasan = '') => {
+    if (!activeProyek) return
+    setValidating(true)
+    try {
+      const res = await api.put(`/proyek/${activeProyek.id}/validasi`, {
+        aksi,
+        alasan_penolakan: alasan,
+      })
+      showToast(aksi === 'terima' ? 'Pengajuan proyek disetujui! Proyek masuk tahap Proses Pengerjaan.' : 'Pengajuan proyek ditolak.', aksi === 'terima' ? 'success' : 'error')
+      setActiveProyek(res.data)
+      setStatusInput(res.data.status_proyek)
+      setShowRejectModal(false)
+      setAlasanTolak('')
+      fetchProyeks(res.data.id)
+    } catch (err) {
+      console.error(err)
+      showToast(err.response?.data?.message || 'Gagal memproses validasi proyek.', 'error')
+    } finally {
+      setValidating(false)
     }
   }
 
@@ -252,12 +322,21 @@ export default function Proyek() {
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-secondary">
-            {mode === 'detail' ? `Detail: ${activeProyek?.nama_proyek}` : 'Proyek Saya'}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-secondary">
+              {mode === 'detail' ? `Detail: ${activeProyek?.nama_proyek}` : 'Proyek Saya'}
+            </h1>
+            {mode === 'detail' && activeProyek?.customer && (
+              <span className="badge badge-neutral bg-secondary text-white font-bold text-xs px-2.5 py-1 rounded-lg">
+                Klien: {activeProyek.customer.name}
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-base-content/60 mt-1">
             {mode === 'detail' 
-              ? 'Pantau progress jasa digital Anda: tahapan, berkas hasil, dan catatan revisi.'
+              ? (activeProyek?.customer 
+                  ? `Klien: ${activeProyek.customer.name} (${activeProyek.customer.email || 'Tanpa email'}) • Pantau progress jasa digital, tahapan, dan berkas.` 
+                  : 'Pantau progress jasa digital Anda: tahapan, berkas hasil, dan catatan revisi.')
               : 'Daftar pengerjaan proyek sistem informasi dan konsultasi digital Anda.'}
           </p>
         </div>
@@ -332,9 +411,13 @@ export default function Proyek() {
                     <span className="text-[10px] font-bold text-primary uppercase">
                       {proj.layanan?.title || 'Kustom TI'}
                     </span>
-                    <span className={`px-2 py-0.5 text-[9px] font-bold rounded uppercase ${
-                      proj.status_proyek === 'selesai' ? 'bg-emerald-100 text-emerald-700' :
+                    <span className={`px-2.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${
+                      proj.status_proyek === 'selesai' || proj.status_proyek === 'Selesai' ? 'bg-emerald-100 text-emerald-700' :
                       proj.status_proyek === 'pengajuan' ? 'bg-amber-100 text-amber-700' :
+                      proj.status_proyek === 'ditolak' ? 'bg-rose-100 text-rose-700' :
+                      proj.status_proyek === 'Proses Pengerjaan' ? 'bg-indigo-100 text-indigo-700' :
+                      proj.status_proyek === 'Maintenance' ? 'bg-teal-100 text-teal-700' :
+                      proj.status_proyek === 'Arsip' ? 'bg-slate-200 text-slate-700' :
                       'bg-primary/10 text-primary'
                     }`}>
                       {proj.status_proyek}
@@ -343,6 +426,11 @@ export default function Proyek() {
                   <h3 className="font-extrabold text-secondary group-hover:text-primary transition-colors text-sm line-clamp-2 leading-snug">
                     {proj.nama_proyek}
                   </h3>
+                  {isMarketingOrAdmin && proj.customer && (
+                    <p className="text-[10px] font-semibold text-primary/80">
+                      Klien: {proj.customer.name}
+                    </p>
+                  )}
                   <p className="text-[11px] text-base-content/60 line-clamp-3 leading-relaxed">
                     {proj.deskripsi_kebutuhan}
                   </p>
@@ -378,34 +466,148 @@ export default function Proyek() {
                     {activeProyek.layanan?.title || 'Pengembangan Custom'}
                   </span>
                   <h2 className="font-extrabold text-secondary text-base sm:text-lg leading-tight mt-0.5">
-                    Progress Pengerjaan Proyek
+                    Track Record Progres Customer / Lead
                   </h2>
                 </div>
-                <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase ${
-                  activeProyek.status_proyek === 'selesai' ? 'bg-emerald-150 text-emerald-800' :
-                  activeProyek.status_proyek === 'pengajuan' ? 'bg-amber-100 text-amber-700' :
-                  'bg-primary/10 text-primary'
-                }`}>
-                  {activeProyek.status_proyek}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase ${
+                    activeProyek.status_proyek === 'selesai' || activeProyek.status_proyek === 'Selesai' ? 'bg-emerald-150 text-emerald-800' :
+                    activeProyek.status_proyek === 'pengajuan' ? 'bg-amber-100 text-amber-700' :
+                    activeProyek.status_proyek === 'ditolak' ? 'bg-rose-100 text-rose-700' :
+                    activeProyek.status_proyek === 'Proses Pengerjaan' ? 'bg-indigo-100 text-indigo-700' :
+                    activeProyek.status_proyek === 'Maintenance' ? 'bg-teal-100 text-teal-700' :
+                    activeProyek.status_proyek === 'Arsip' ? 'bg-slate-200 text-slate-700' :
+                    'bg-primary/10 text-primary'
+                  }`}>
+                    {activeProyek.status_proyek}
+                  </span>
+
+                  {/* Dropdown Ubah Status Terintegrasi pada Header Stepper (Marketing & Admin) */}
+                  {isMarketingOrAdmin && activeProyek.status_proyek !== 'pengajuan' && activeProyek.status_proyek !== 'ditolak' && (
+                    <div className="dropdown dropdown-end">
+                      <div tabIndex={0} role="button" className="btn btn-xs rounded-full border px-3 text-[10px] font-bold h-7 flex items-center gap-1.5 shadow-xs bg-white hover:bg-base-100 border-base-300">
+                        <span>Ubah Status</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-2xl w-52 border border-base-200 mt-1 z-[100] space-y-1">
+                        {['Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'].map((st) => (
+                          <li key={st}>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatusStepper(st)}
+                              className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${
+                                activeProyek.status_proyek === st ? 'bg-primary/10 text-primary' : 'hover:bg-base-100'
+                              }`}
+                            >
+                              <span>{st}</span>
+                              {activeProyek.status_proyek === st && (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <span className="text-xs font-bold text-base-content/50">Tahapan Saat Ini</span>
-                  <span className="text-xl font-black text-primary font-mono">{activeProyek.progress}%</span>
-                </div>
-                <progress
-                  className="progress progress-primary w-full h-3 rounded-full"
-                  value={activeProyek.progress}
-                  max="100"
-                ></progress>
-              </div>
+              {/* Stepper Bulat-bulat Track Record Progres */}
+              {(() => {
+                // POV Customer: 4 tahapan ringkas: Deal -> Proses Pengerjaan -> Selesai -> Maintenance
+                // POV Marketing/Admin: 5 tahapan proyek: pengajuan -> Proses Pengerjaan -> Selesai -> Maintenance -> Arsip
+                const marketingStages = ['pengajuan', 'Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'];
+                const customerStages = ['Deal', 'Proses Pengerjaan', 'Selesai', 'Maintenance'];
+
+                const stages = isCustomer ? customerStages : marketingStages;
+
+                let norm = activeProyek.status_proyek;
+                if (norm === 'planning') norm = 'Proses Pengerjaan';
+                else if (norm === 'on progress' || norm === 'testing') norm = 'Proses Pengerjaan';
+                else if (norm === 'selesai') norm = 'Selesai';
+                
+                // Jika customer, status proyek sebelum Deal tidak relevan — default ke Deal
+                if (isCustomer && ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran', 'pengajuan', 'ditolak'].includes(norm)) {
+                  norm = 'Deal';
+                }
+
+                const curIdx = stages.indexOf(norm);
+                const isUnderReview = activeProyek.status_proyek === 'pengajuan';
+                const isRejected = activeProyek.status_proyek === 'ditolak';
+
+                return (
+                  <div className="w-full py-2 relative px-2 overflow-x-auto custom-scrollbar">
+                    <div className={`${isCustomer ? 'min-w-[420px] max-w-2xl mx-auto' : 'min-w-[700px]'} relative py-4`}>
+                      {/* Line background */}
+                      <div className="absolute top-[28px] left-10 right-10 h-[3px] bg-base-300 rounded-full z-0">
+                        <div 
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                          style={{ 
+                            width: isUnderReview || isRejected || curIdx < 0 ? '0%' : `${(Math.max(0, curIdx) / (stages.length - 1)) * 100}%` 
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Dots Stepper */}
+                      <div className="relative z-10 flex justify-between items-start w-full">
+                        {stages.map((st, idx) => {
+                          const active = !isUnderReview && !isRejected && curIdx >= 0 && idx <= curIdx;
+                          const isCurrent = !isUnderReview && !isRejected && idx === curIdx;
+                          
+                          return (
+                            <div key={st} className="flex flex-col items-center gap-2 group/dot relative w-24">
+                              <div 
+                                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 shadow-xs shrink-0 ${
+                                  active 
+                                    ? 'bg-emerald-500 text-white scale-110 ring-4 ring-emerald-500/20' 
+                                    : 'bg-white text-base-content/30 border-2 border-base-300'
+                                }`}
+                              >
+                                {active ? (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                ) : (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-base-300" />
+                                )}
+                              </div>
+                              <span 
+                                className={`text-[10px] font-bold tracking-tight text-center w-full leading-tight select-none mt-1 ${
+                                  isCurrent ? 'text-emerald-600 font-extrabold' : 'text-base-content/40'
+                                }`}
+                              >
+                                {st}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="text-xs text-base-content/75 leading-relaxed bg-base-50 p-4 rounded-2xl border border-base-200/55">
                 <p className="font-bold text-secondary mb-1">Brief Kebutuhan:</p>
                 <p className="whitespace-pre-wrap">{activeProyek.deskripsi_kebutuhan}</p>
               </div>
+
+              {/* Catatan jika ditolak */}
+              {activeProyek.status_proyek === 'ditolak' && activeProyek.alasan_penolakan && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span>Pengajuan Proyek Ini Ditolak</span>
+                  </div>
+                  <p className="opacity-90">{activeProyek.alasan_penolakan}</p>
+                </div>
+              )}
 
               {/* Kontrak Waktu Proyek */}
               <div className="grid grid-cols-2 gap-4 bg-primary/5 p-4 rounded-2xl border border-primary/10 relative">
@@ -481,41 +683,69 @@ export default function Proyek() {
                     </form>
                   )}
 
-                  {/* Form Update Progres & Status */}
-                  <form onSubmit={handleUpdateProyek} className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex flex-col gap-3">
-                    <h4 className="font-bold text-xs text-secondary flex items-center gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Update Status Progres
-                    </h4>
-                    <div className="form-control">
-                      <label className="label py-0.5"><span className="label-text text-[10px] font-bold text-secondary">Status Proyek</span></label>
-                      <select
-                        className="select select-bordered rounded-xl text-xs w-full focus:outline-none bg-white"
-                        value={statusInput}
-                        onChange={(e) => setStatusInput(e.target.value)}
-                        required
-                      >
-                        <option value="pengajuan">Pengajuan</option>
-                        <option value="planning">Planning</option>
-                        <option value="on progress">On Progress</option>
-                        <option value="testing">Testing</option>
-                        <option value="selesai">Selesai</option>
-                      </select>
+                  {/* Panel Validasi (jika status masih pengajuan) ATAU Form Update Progres (jika sudah divalidasi) */}
+                  {activeProyek.status_proyek === 'pengajuan' ? (
+                    <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-200/80 flex flex-col gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-sm text-secondary">Konfirmasi &amp; Validasi Pengajuan Proyek</h4>
+                          <p className="text-xs text-base-content/70 leading-relaxed">
+                            Proyek ini baru diajukan oleh <span className="font-bold text-secondary">{activeProyek.customer?.name || 'Customer'}</span>. 
+                            Silakan lakukan validasi: terima untuk memulai tahapan <span className="font-bold text-emerald-700">Proses Pengerjaan (Progress 70%)</span>, atau tolak dengan alasan.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-amber-200/60">
+                        <button
+                          type="button"
+                          disabled={validating}
+                          onClick={() => setShowRejectModal(true)}
+                          className="btn btn-sm btn-ghost hover:bg-rose-100 text-rose-700 rounded-xl px-4 font-bold text-xs gap-1.5"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <span>Tolak Pengajuan</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={validating}
+                          onClick={() => {
+                            if (window.confirm(`Setujui pengajuan proyek "${activeProyek.nama_proyek}" dan mulai tahap Proses Pengerjaan?`)) {
+                              handleValidasi('terima')
+                            }
+                          }}
+                          className="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl px-5 font-bold text-xs shadow-sm gap-1.5"
+                        >
+                          {validating ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                          <span>Setujui &amp; Mulai Pengerjaan</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-end mt-1">
-                      <button 
-                        type="submit" 
-                        className="btn btn-primary btn-sm rounded-xl text-white font-semibold border-none shadow-sm gap-1.5 px-4 transition-all hover:opacity-90"
+                  ) : activeProyek.status_proyek === 'ditolak' ? (
+                    <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-200 flex items-center justify-between gap-3 text-xs">
+                      <span className="font-semibold text-rose-800">Status proyek ini ditolak. Alur kerja tidak dapat dilanjutkan kecuali status diubah kembali.</span>
+                      <button
+                        type="button"
+                        onClick={() => handleValidasi('terima')}
+                        className="btn btn-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 font-bold border-none"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Simpan Status Proyek</span>
+                        Buka Kembali &amp; Setujui
                       </button>
                     </div>
-                  </form>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -553,20 +783,20 @@ export default function Proyek() {
                     <div key={idx} className="flex gap-4 items-start relative group">
                       {/* Line connector */}
                       {idx !== activeProyek.timeline.length - 1 && (
-                        <div className="absolute left-[9px] top-6 w-[2px] h-[calc(100%+8px)] bg-base-200"></div>
+                        <div className="absolute left-[11px] top-7 w-[2px] h-[calc(100%+8px)] bg-base-200"></div>
                       )}
 
                       <div
                         onClick={() => { if (isMarketingOrAdmin) handleToggleMilestone(idx); }}
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
                           item.selesai
                             ? 'bg-primary border-primary text-white shadow-sm shadow-primary/20'
                             : 'bg-white border-base-300'
                         }`}
                       >
                         {item.selesai && (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         )}
                       </div>
@@ -800,23 +1030,55 @@ export default function Proyek() {
         }}
       />
 
-      {/* ── TOAST NOTIFICATION ── */}
-      {toast.show && (
-        <div className="toast toast-end toast-bottom z-[9999] p-4">
-          <div className={`alert ${toast.type === 'success' ? 'alert-success' : 'alert-error'} text-white shadow-xl rounded-2xl flex items-center gap-2 border-none`}>
-            {toast.type === 'success' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      {/* ── MODAL: ALASAN PENOLAKAN PROYEK ── */}
+      {showRejectModal && (
+        <div className="modal modal-open z-50">
+          <div className="modal-box rounded-3xl max-w-md border border-base-300">
+            <h3 className="font-extrabold text-base text-secondary border-b border-base-200 pb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <span className="font-semibold text-sm">{toast.message}</span>
+              <span>Tolak Pengajuan Proyek</span>
+            </h3>
+            <div className="space-y-3 pt-3">
+              <p className="text-xs text-base-content/70">
+                Berikan catatan alasan mengapa pengajuan proyek ini belum dapat diterima. Catatan ini akan dapat dibaca oleh klien.
+              </p>
+              <textarea
+                className="textarea textarea-bordered rounded-xl text-xs w-full h-24 focus:outline-none focus:border-rose-400"
+                placeholder="Contoh: Kebutuhan teknis belum lengkap, mohon konsultasi terlebih dahulu melalui fitur chat..."
+                value={alasanTolak}
+                onChange={(e) => setAlasanTolak(e.target.value)}
+              />
+            </div>
+            <div className="modal-action border-t border-base-200 pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={validating}
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setAlasanTolak('')
+                }}
+                className="btn btn-sm btn-ghost rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={validating}
+                onClick={() => handleValidasi('tolak', alasanTolak)}
+                className="btn btn-sm bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold border-none"
+              >
+                {validating ? <span className="loading loading-spinner loading-xs"></span> : null}
+                <span>Konfirmasi Tolak</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ── TOAST NOTIFICATION ── */}
+      <Toast show={toast.show} type={toast.type === 'success' ? 'success' : 'error'} message={toast.message} onClose={() => setToast(prev => ({ ...prev, show: false }))} />
     </div>
   )
 }

@@ -1,0 +1,31 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam rectangleBorderColor #D2D2D2
+skinparam rectangleBackgroundColor #F7F7F7
+skinparam nodesep 12
+skinparam ranksep 14
+left to right direction
+rectangle "                    " as sidebar
+rectangle "                                                                                " as header
+rectangle "                                                                                " as welcome
+rectangle "             " as card1
+rectangle "             " as card2
+rectangle "             " as card3
+rectangle "             " as card4
+rectangle "                                                                                " as progress
+rectangle "                              " as info
+rectangle "                              " as quick
+rectangle "                                                                                " as bottom
+sidebar -[hidden]right- header
+header -[hidden]down- welcome
+welcome -[hidden]down- card1
+card1 -[hidden]right- card2
+card2 -[hidden]right- card3
+card3 -[hidden]right- card4
+card1 -[hidden]down- progress
+progress -[hidden]right- info
+info -[hidden]right- quick
+progress -[hidden]down- bottom
+@enduml

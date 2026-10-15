@@ -1,0 +1,20 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam rectangleBorderColor #D2D2D2
+skinparam rectangleBackgroundColor #F7F7F7
+skinparam nodesep 12
+skinparam ranksep 14
+left to right direction
+rectangle "                    " as sidebar
+rectangle "                                                                                " as header
+rectangle "                                                                                " as title
+rectangle "                                                                                " as filter
+rectangle "                                                                                " as table
+rectangle "                                                                                " as footer
+sidebar -[hidden]right- header
+header -[hidden]down- title
+title -[hidden]down- filter
+filter -[hidden]down- table
+table -[hidden]down- footer
+@enduml

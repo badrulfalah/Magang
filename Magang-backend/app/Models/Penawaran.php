@@ -21,7 +21,18 @@ class Penawaran extends Model
         'harga',
         'brosur_path',
         'status',
+        'tanggal_deal',
     ];
+
+    protected $casts = [
+        'tanggal_deal' => 'datetime',
+        'harga' => 'decimal:2',
+    ];
+
+    public function proyek()
+    {
+        return $this->hasOne(Proyek::class, 'penawaran_id');
+    }
 
     public function marketing()
     {

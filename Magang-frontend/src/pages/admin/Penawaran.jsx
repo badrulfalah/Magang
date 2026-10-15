@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { useAuth } from '../../context/useAuth'
+import Toast from '../../components/Toast'
 
 export default function Penawaran() {
   const { user, hasPermission } = useAuth()
@@ -185,13 +186,7 @@ export default function Penawaran() {
 
   return (
     <div className="space-y-6">
-      {showToast && toast && (
-        <div className="toast toast-end toast-bottom z-[999]">
-          <div className={`alert ${toast.type === 'error' ? 'alert-error text-white' : 'alert-success text-white'} rounded-xl shadow-lg font-semibold text-sm border-0`}>
-            <span>{toast.msg}</span>
-          </div>
-        </div>
-      )}
+      <Toast show={showToast && !!toast} type={toast?.type === 'error' ? 'error' : 'success'} message={toast?.msg} onClose={() => setShowToast(false)} />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

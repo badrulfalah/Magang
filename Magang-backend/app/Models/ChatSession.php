@@ -14,6 +14,7 @@ class ChatSession extends Model
     protected $fillable = [
         'customer_id',
         'product_id',
+        'layanan_id',
         'marketing_id',
         'status',
     ];
@@ -33,6 +34,11 @@ class ChatSession extends Model
         return $this->belongsTo(Produk::class, 'product_id', 'id_produk');
     }
 
+    public function layanan()
+    {
+        return $this->belongsTo(Layanan::class, 'layanan_id', 'id_layanan');
+    }
+
     public function messages()
     {
         return $this->hasMany(ChatMessage::class, 'chat_session_id');
@@ -41,5 +47,10 @@ class ChatSession extends Model
     public function files()
     {
         return $this->hasMany(ChatFile::class, 'chat_session_id');
+    }
+
+    public function proyeks()
+    {
+        return $this->hasMany(Proyek::class, 'chat_session_id');
     }
 }

@@ -17,7 +17,7 @@ class ChatController extends Controller
         $user = $request->user();
         $isCustomer = $user->roles->contains('name', 'customer');
 
-        $query = ChatSession::with(['customer', 'marketing', 'product']);
+        $query = ChatSession::with(['customer', 'marketing', 'product', 'layanan']);
 
         if ($isCustomer) {
             $query->where('customer_id', $user->id);
@@ -41,6 +41,7 @@ class ChatController extends Controller
             'customer', 
             'marketing', 
             'product', 
+            'layanan',
             'messages.sender', 
             'files.uploader'
         ])->findOrFail($id);
@@ -57,15 +58,19 @@ class ChatController extends Controller
         $user = $request->user();
         $request->validate([
             'product_id' => 'nullable|exists:produks,id_produk',
+            'layanan_id' => 'nullable|exists:layanan,id_layanan',
             'marketing_id' => 'nullable|exists:users,id',
         ]);
 
-        // Cari apakah ada sesi aktif (bukan Selesai) untuk produk/marketing yang sama
+        // Cari apakah ada sesi aktif (bukan Arsip) untuk produk/layanan/marketing yang sama
         $query = ChatSession::where('customer_id', $user->id)
-            ->where('status', '!=', 'Selesai');
+            ->where('status', '!=', 'Arsip');
         
         if ($request->product_id) {
             $query->where('product_id', $request->product_id);
+        }
+        if ($request->layanan_id) {
+            $query->where('layanan_id', $request->layanan_id);
         }
         if ($request->marketing_id) {
             $query->where('marketing_id', $request->marketing_id);
@@ -80,6 +85,7 @@ class ChatController extends Controller
         $session = ChatSession::create([
             'customer_id' => $user->id,
             'product_id' => $request->product_id,
+            'layanan_id' => $request->layanan_id,
             'marketing_id' => $request->marketing_id,
             'status' => $request->marketing_id ? 'Ditindaklanjuti' : 'Ketertarikan',
         ]);
@@ -93,7 +99,7 @@ class ChatController extends Controller
             ]);
         }
 
-        return response()->json($session, 201);
+        return response()->json($session->load(['layanan', 'product']), 201);
     }
 
     public function sendMessage(Request $request, $id)
@@ -201,7 +207,7 @@ class ChatController extends Controller
         $session = ChatSession::findOrFail($id);
 
         $request->validate([
-            'status' => 'required|in:Ketertarikan,Ditindaklanjuti,Penawaran,Deal,Proses Pengerjaan,Selesai,Maintenance',
+            'status' => 'required|in:Ketertarikan,Ditindaklanjuti,Penawaran,Deal,Arsip',
         ]);
 
         $oldStatus = $session->status;
@@ -212,7 +218,7 @@ class ChatController extends Controller
         ChatMessage::create([
             'chat_session_id' => $session->id,
             'sender_id' => $user->id,
-            'message' => '[Sistem] Tahapan pengerjaan diubah dari "' . $oldStatus . '" menjadi "' . $request->status . '".',
+            'message' => '[Sistem] Tahapan lead diubah dari "' . $oldStatus . '" menjadi "' . $request->status . '".',
         ]);
 
         $session->touch();

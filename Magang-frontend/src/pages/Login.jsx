@@ -62,6 +62,7 @@ export default function Login() {
 
   const [regName, setRegName] = useState('')
   const [regEmail, setRegEmail] = useState('')
+  const [regPhone, setRegPhone] = useState('')
   const [regPw, setRegPw] = useState('')
   const [regCf, setRegCf] = useState('')
   const [regErrors, setRegErrors] = useState({})
@@ -138,7 +139,7 @@ export default function Login() {
   const handleRegister = async (e) => {
     e.preventDefault(); setError(''); setRegErrors({}); setLoading(true)
     try { 
-      await register(regName, regEmail, regPw, regCf)
+      await register(regName, regEmail, regPhone, regPw, regCf)
       navigate('/admin')
     }
     catch (err) {
@@ -363,6 +364,18 @@ export default function Login() {
                 placeholder="nama@email.com"
                 value={regEmail} 
                 onChange={e => setRegEmail(e.target.value)} 
+                required 
+              />
+            </Field>
+
+            <Field label={<>Nomor WhatsApp <span className="text-primary">*</span></>} error={regErrors.phone?.[0]}>
+              <input 
+                type="tel" 
+                className={inputBase} 
+                style={inputStyle(!!regErrors.phone)}
+                placeholder="08xxxxxxxxxx"
+                value={regPhone} 
+                onChange={e => setRegPhone(e.target.value)} 
                 required 
               />
             </Field>

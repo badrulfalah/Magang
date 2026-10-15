@@ -28,12 +28,12 @@ class DashboardController extends Controller
         if ($isMarketing) {
             $totalChats = ChatSession::count();
             $myChatsCount = ChatSession::where('marketing_id', $user->id)->count();
-            $activeLeadsCount = ChatSession::where('marketing_id', $user->id)->where('status', '!=', 'Selesai')->count();
+            $activeLeadsCount = ChatSession::where('marketing_id', $user->id)->where('status', '!=', 'Arsip')->count();
             $pendingTestsCount = Testimoni::where('status', 'pending')->count();
             $totalPenawarans = Penawaran::count();
             $totalProyeks = Proyek::count();
             // Ambil semua chat session untuk track record
-            $allLeads = ChatSession::with(['customer', 'product', 'marketing'])->orderBy('updated_at', 'desc')->get();
+            $allLeads = ChatSession::with(['customer', 'product', 'marketing'])->where('status', '!=', 'Arsip')->orderBy('updated_at', 'desc')->get();
             // Ambil 5 pesan kontak terbaru untuk marketing (Primary key: id_pesan_kontak)
             $recentMessages = PesanKontak::with('user')->orderByDesc('id_pesan_kontak')->limit(5)->get();
 
@@ -52,19 +52,33 @@ class DashboardController extends Controller
         }
 
         if ($isCustomer) {
-            $activeProj = Proyek::where('customer_id', $user->id)->where('status_proyek', '!=', 'selesai')->count();
+            $activeProj = Proyek::where('customer_id', $user->id)
+                ->whereNotIn('status_proyek', ['pengajuan', 'ditolak', 'Selesai', 'selesai', 'Arsip'])
+                ->count();
+            $pendingPengajuanProj = Proyek::where('customer_id', $user->id)
+                ->where('status_proyek', 'pengajuan')
+                ->count();
             $consultations = ChatSession::where('customer_id', $user->id)->whereIn('status', ['Ketertarikan', 'Ditindaklanjuti'])->count();
             $pendingPen = Penawaran::where('customer_id', $user->id)->where('status', 'pending')->count();
             // Ambil 5 pesan kontak terbaru dari customer ini (Primary key: id_pesan_kontak)
             $pesanKontaks = PesanKontak::where('id_user', $user->id)->orderByDesc('id_pesan_kontak')->limit(5)->get();
 
+            // Ambil daftar proyek aktif dan pengajuan untuk ditampilkan langsung di dashboard
+            $customerProyeks = Proyek::with('layanan')
+                ->where('customer_id', $user->id)
+                ->latest()
+                ->limit(5)
+                ->get();
+
             return response()->json([
                 'customer' => [
                     'activeProjects' => $activeProj,
+                    'pendingProjects' => $pendingPengajuanProj,
                     'consultationsCount' => $consultations,
                     'supportTickets' => $pendingPen,
                     'accountStatus' => $user->status === 'aktif' ? 'Terverifikasi' : 'Aktif',
-                    'recentMessages' => $pesanKontaks
+                    'recentMessages' => $pesanKontaks,
+                    'recentProyeks' => $customerProyeks,
                 ]
             ]);
         }
@@ -72,7 +86,7 @@ class DashboardController extends Controller
         // Admin: ambil 5 pesan kontak terbaru dan jumlah pesan baru (Primary key: id_pesan_kontak)
         $recentMessages = PesanKontak::with('user')->orderByDesc('id_pesan_kontak')->limit(5)->get();
         $newMessagesCount = PesanKontak::where('status', 'new')->count();
-        $allLeads = ChatSession::with(['customer', 'product', 'marketing'])->orderBy('updated_at', 'desc')->get();
+        $allLeads = ChatSession::with(['customer', 'product', 'marketing'])->where('status', '!=', 'Arsip')->orderBy('updated_at', 'desc')->get();
 
         return response()->json([
             'users'          => User::count(),

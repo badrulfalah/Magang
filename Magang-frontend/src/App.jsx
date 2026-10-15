@@ -38,6 +38,10 @@ const Penawaran = lazy(() => import('./pages/admin/Penawaran'))
 const Proyek = lazy(() => import('./pages/admin/Proyek'))
 const ClientLogo = lazy(() => import('./pages/admin/ClientLogo'))
 const Keunggulan = lazy(() => import('./pages/admin/Keunggulan'))
+const RiwayatTransaksi = lazy(() => import('./pages/admin/RiwayatTransaksi'))
+const RfmAnalysis = lazy(() => import('./pages/admin/RfmAnalysis'))
+const PromoCampaign = lazy(() => import('./pages/admin/PromoCampaign'))
+const BroadcastMaintenance = lazy(() => import('./pages/admin/BroadcastMaintenance'))
 
 const FallbackLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-base-100">
@@ -86,6 +90,10 @@ function App() {
               <Route path="chat" element={<ChatCenter />} />
               <Route path="penawaran" element={<Penawaran />} />
               <Route path="proyek" element={<Proyek />} />
+              <Route path="riwayat-transaksi" element={<RiwayatTransaksi />} />
+              <Route path="rfm" element={<RfmAnalysis />} />
+              <Route path="promo-campaign" element={<PromoCampaign />} />
+              <Route path="broadcast-maintenance" element={<BroadcastMaintenance />} />
               <Route path="client-logos" element={<ClientLogo />} />
               <Route path="keunggulans" element={<Keunggulan />} />
             </Route>

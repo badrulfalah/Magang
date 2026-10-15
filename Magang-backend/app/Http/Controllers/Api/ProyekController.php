@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Proyek;
+use App\Models\ChatSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,7 +13,7 @@ class ProyekController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Proyek::with(['penawaran', 'customer', 'layanan']);
+        $query = Proyek::with(['penawaran', 'customer', 'layanan', 'chatSession']);
 
         if ($user->hasRole('customer')) {
             $query->where('customer_id', $user->id);
@@ -58,12 +59,22 @@ class ProyekController extends Controller
             'dokumentasi' => []
         ]);
 
-        return response()->json($proyek->load(['customer', 'layanan']), 201);
+        // Cek apakah ada chat session aktif milik customer ini untuk dihubungkan
+        $activeChat = ChatSession::where('customer_id', $user->id)
+            ->where('status', '!=', 'Arsip')
+            ->latest()
+            ->first();
+
+        if ($activeChat) {
+            $proyek->update(['chat_session_id' => $activeChat->id]);
+        }
+
+        return response()->json($proyek->load(['customer', 'layanan', 'chatSession']), 201);
     }
 
     public function show($id)
     {
-        $proyek = Proyek::with(['penawaran', 'customer', 'layanan'])->findOrFail($id);
+        $proyek = Proyek::with(['penawaran', 'customer', 'layanan', 'chatSession'])->findOrFail($id);
         return response()->json($proyek);
     }
 
@@ -75,19 +86,69 @@ class ProyekController extends Controller
             'nama_proyek' => 'required|string|max:255',
             'deskripsi_kebutuhan' => 'required|string',
             'progress' => 'required|integer|min:0|max:100',
-            'status_proyek' => 'required|in:pengajuan,planning,on progress,testing,selesai',
+            'status_proyek' => 'required|string|in:pengajuan,ditolak,Proses Pengerjaan,Selesai,Maintenance,Arsip',
+            'alasan_penolakan' => 'nullable|string',
             'tanggal_mulai' => 'nullable|date',
             'tanggal_selesai' => 'nullable|date',
             'timeline' => 'nullable|array',
         ]);
 
-        $data = $request->only('nama_proyek', 'deskripsi_kebutuhan', 'progress', 'status_proyek', 'tanggal_mulai', 'tanggal_selesai');
+        $data = $request->only('nama_proyek', 'deskripsi_kebutuhan', 'progress', 'status_proyek', 'alasan_penolakan', 'tanggal_mulai', 'tanggal_selesai');
+
+        if (in_array($request->status_proyek, ['Selesai', 'Arsip']) && empty($data['tanggal_selesai']) && empty($proyek->tanggal_selesai)) {
+            $data['tanggal_selesai'] = date('Y-m-d');
+        }
 
         if ($request->has('timeline')) {
             $data['timeline'] = $request->timeline;
         }
 
         $proyek->update($data);
+
+        return response()->json($proyek->load(['penawaran', 'customer', 'layanan', 'chatSession']));
+    }
+
+    public function validasi(Request $request, $id)
+    {
+        $proyek = Proyek::findOrFail($id);
+
+        $request->validate([
+            'aksi' => 'required|in:terima,tolak',
+            'alasan_penolakan' => 'nullable|string|max:1000',
+        ]);
+
+        $timeline = $proyek->timeline ?? [];
+
+        if ($request->aksi === 'terima') {
+            $timeline[] = [
+                'judul' => 'Pengajuan Diterima (Proses Pengerjaan Dimulai)',
+                'deskripsi' => 'Pengajuan proyek telah disetujui oleh tim marketing. Proyek resmi masuk tahap Proses Pengerjaan.',
+                'tanggal' => date('Y-m-d'),
+                'selesai' => true,
+            ];
+
+            $proyek->update([
+                'status_proyek' => 'Proses Pengerjaan',
+                'progress' => 70,
+                'alasan_penolakan' => null,
+                'timeline' => $timeline,
+            ]);
+        } else {
+            $alasan = $request->alasan_penolakan ?: 'Pengajuan proyek belum dapat kami proses saat ini.';
+            $timeline[] = [
+                'judul' => 'Pengajuan Ditolak',
+                'deskripsi' => 'Catatan: ' . $alasan,
+                'tanggal' => date('Y-m-d'),
+                'selesai' => true,
+            ];
+
+            $proyek->update([
+                'status_proyek' => 'ditolak',
+                'progress' => 0,
+                'alasan_penolakan' => $alasan,
+                'timeline' => $timeline,
+            ]);
+        }
 
         return response()->json($proyek->load(['penawaran', 'customer', 'layanan']));
     }

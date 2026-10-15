@@ -1,0 +1,22 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam rectangleBorderColor #D2D2D2
+skinparam rectangleBackgroundColor #F7F7F7
+skinparam nodesep 12
+skinparam ranksep 14
+left to right direction
+rectangle "                    " as sidebar
+rectangle "                                                                                " as header
+rectangle "                              " as summary
+rectangle "                              " as status
+rectangle "                                                                                " as timeline
+rectangle "                              " as documentation
+rectangle "                              " as quick
+sidebar -[hidden]right- header
+header -[hidden]down- summary
+summary -[hidden]right- status
+summary -[hidden]down- timeline
+timeline -[hidden]down- documentation
+documentation -[hidden]right- quick
+@enduml

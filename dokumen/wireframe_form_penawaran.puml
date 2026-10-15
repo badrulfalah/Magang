@@ -1,0 +1,23 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam rectangleBorderColor #D2D2D2
+skinparam rectangleBackgroundColor #F7F7F7
+skinparam nodesep 12
+skinparam ranksep 12
+rectangle "                                                                                " as header
+rectangle "                                                                                " as form
+rectangle "                              " as field1
+rectangle "                              " as field2
+rectangle "                              " as field3
+rectangle "                              " as field4
+rectangle "                                                                                " as upload
+rectangle "                                                                                " as buttons
+header -[hidden]down- form
+form -[hidden]down- field1
+field1 -[hidden]right- field2
+field1 -[hidden]down- field3
+field3 -[hidden]right- field4
+field3 -[hidden]down- upload
+upload -[hidden]down- buttons
+@enduml

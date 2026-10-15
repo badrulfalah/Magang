@@ -63,6 +63,20 @@ export default function AjukanProyek({ isOpen, onClose, onSaved }) {
         nama_proyek: namaProyek,
         deskripsi_kebutuhan: deskripsiKebutuhan
       })
+
+      // Auto-set chat session aktif menjadi "Deal" setelah pengajuan proyek terkirim
+      try {
+        const chatsRes = await api.get('/chats')
+        const sessions = Array.isArray(chatsRes.data) ? chatsRes.data : []
+        const activeChat = sessions.find(s => s.status !== 'Arsip')
+        if (activeChat && activeChat.status !== 'Deal') {
+          await api.put(`/chats/${activeChat.id}/status`, { status: 'Deal' })
+        }
+      } catch (chatErr) {
+        // Non-fatal: pengajuan proyek sudah berhasil
+        console.error('Gagal update status chat:', chatErr)
+      }
+
       if (onSaved) onSaved()
     } catch (err) {
       console.error(err)

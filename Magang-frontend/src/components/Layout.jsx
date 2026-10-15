@@ -9,6 +9,12 @@ const menuItems = [
   { path: '/admin/penawaran', label: 'Penawaran', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', category: 'UTAMA' },
   { path: '/admin/proyek', label: 'Proyek', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z', category: 'UTAMA' },
   
+  { path: '/admin/riwayat-transaksi', label: 'Riwayat Transaksi', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', category: 'RIWAYAT' },
+  
+  { path: '/admin/rfm', label: 'Analisis RFM', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', permission: 'kelola_penawaran', category: 'MARKETING' },
+  { path: '/admin/promo-campaign', label: 'Promo Campaign', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z', permission: 'kelola_penawaran', category: 'MARKETING' },
+  { path: '/admin/broadcast-maintenance', label: 'Broadcast Maintenance', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', permission: 'kelola_penawaran', category: 'MARKETING' },
+  
   { path: '/admin/users', label: 'Users', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', permission: 'users.view', category: 'MANAJEMEN PENGGUNA' },
   { path: '/admin/roles', label: 'Roles', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', permission: 'roles.view', category: 'MANAJEMEN PENGGUNA' },
   { path: '/admin/permissions', label: 'Permissions', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z', permission: 'permissions.view', category: 'MANAJEMEN PENGGUNA' },
@@ -82,6 +88,7 @@ export default function Layout() {
     return null
   })
   const [notifications, setNotifications] = useState({ chat: 0, penawaran: 0, proyek: 0, has_penawaran: false, has_selesai_lead: false })
+  const [activeBroadcasts, setActiveBroadcasts] = useState([])
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -92,13 +99,28 @@ export default function Layout() {
     }
   }, [])
 
+  const fetchBroadcasts = useCallback(async () => {
+    try {
+      const res = await api.get('/broadcast-maintenance/active')
+      setActiveBroadcasts(res.data || [])
+    } catch {}
+  }, [])
+
+  const dismissBroadcast = async (id) => {
+    try {
+      await api.post(`/broadcast-maintenance/${id}/read`)
+      setActiveBroadcasts(prev => prev.filter(b => b.id !== id))
+    } catch {}
+  }
+
   useEffect(() => {
     if (user) {
       fetchNotifications()
+      fetchBroadcasts()
       const interval = setInterval(fetchNotifications, 10000)
       return () => clearInterval(interval)
     }
-  }, [user, fetchNotifications])
+  }, [user, fetchNotifications, fetchBroadcasts])
 
   const fetchLogo = useCallback(async () => {
     try {
@@ -162,6 +184,10 @@ export default function Layout() {
       const isMarketing = user?.roles?.some(role => role.name === 'marketing');
       return isMarketing || isCustomer;
     }
+    if (item.path === '/admin/riwayat-transaksi') {
+      const isMarketing = user?.roles?.some(role => role.name === 'marketing');
+      return isMarketing || isCustomer;
+    }
     return !item.permission || hasPermission(item.permission)
   })
 
@@ -184,7 +210,7 @@ export default function Layout() {
         return acc;
       }
     } else if (isCustomer) {
-      if (menuItemCopy.category !== 'UTAMA' && menuItemCopy.path !== '/admin/testimoni') {
+      if (menuItemCopy.category !== 'UTAMA' && menuItemCopy.category !== 'RIWAYAT' && menuItemCopy.path !== '/admin/testimoni') {
         return acc;
       }
       menuItemCopy.category = 'UTAMA';
@@ -445,6 +471,38 @@ export default function Layout() {
         <main className={`w-full mx-auto ${
           isChatPage ? 'p-2 sm:p-2.5 max-w-full flex-1 flex flex-col min-h-0 overflow-hidden' : 'p-4 sm:p-6 max-w-7xl'
         }`}>
+          {activeBroadcasts.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {activeBroadcasts.map(b => {
+                const isUrgent = b.jenis === 'trouble' || b.jenis === 'maintenance'
+                const bannerBg = isUrgent
+                  ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white border border-red-400/40'
+                  : 'bg-blue-50 text-blue-800 border border-blue-200'
+                const jenisLabel = b.jenis === 'trouble' ? 'TROUBLE' : b.jenis === 'maintenance' ? 'MAINTENANCE' : 'INFO'
+                return (
+                  <div key={b.id} className={`flex items-start gap-3 p-4 rounded-2xl shadow-lg text-sm font-semibold ${bannerBg}`}>
+                    {isUrgent ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        {isUrgent && <span className="badge badge-sm bg-white/20 text-white border-0 font-bold text-[9px] uppercase tracking-wider animate-pulse">Urgent</span>}
+                        <span className="font-extrabold">[{jenisLabel}] {b.judul}</span>
+                      </div>
+                      <p className={`text-xs font-normal mt-1 ${isUrgent ? 'text-red-100' : 'opacity-80'}`}>{b.pesan}</p>
+                    </div>
+                    <button onClick={() => dismissBroadcast(b.id)} className={`btn btn-ghost btn-xs btn-circle shrink-0 ${isUrgent ? 'text-white hover:bg-white/20' : ''}`}>✕</button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

@@ -23,6 +23,10 @@ use App\Http\Controllers\Api\ProdukController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\PenawaranController;
 use App\Http\Controllers\Api\ProyekController;
+use App\Http\Controllers\Api\RiwayatTransaksiController;
+use App\Http\Controllers\Api\RfmController;
+use App\Http\Controllers\Api\PromoCampaignController;
+use App\Http\Controllers\Api\BroadcastMaintenanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -111,6 +115,45 @@ Route::middleware('auth:sanctum')->group(function () {
             ->middleware('permission:kelola_produk');
     });
 
+    // Riwayat Transaksi
+    Route::get('/riwayat-transaksi', [RiwayatTransaksiController::class, 'customerIndex']);
+    Route::get('/admin/riwayat-transaksi', [RiwayatTransaksiController::class, 'marketingIndex'])
+        ->middleware('permission:kelola_penawaran');
+
+    // RFM & Promo Campaign
+    Route::get('/admin/rfm', [RfmController::class, 'index'])
+        ->middleware('permission:kelola_penawaran');
+    Route::get('/admin/promo-campaigns', [PromoCampaignController::class, 'index'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/promo-campaigns', [PromoCampaignController::class, 'store'])
+        ->middleware('permission:kelola_penawaran');
+    Route::get('/admin/promo-campaigns/{id}', [PromoCampaignController::class, 'show'])
+        ->middleware('permission:kelola_penawaran');
+    Route::delete('/admin/promo-campaigns/{id}', [PromoCampaignController::class, 'destroy'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/promo-campaigns/{id}/send', [PromoCampaignController::class, 'send'])
+        ->middleware('permission:kelola_penawaran');
+
+    // Broadcast Maintenance
+    Route::get('/broadcast-maintenance/active', [BroadcastMaintenanceController::class, 'active']);
+    Route::post('/broadcast-maintenance/{id}/read', [BroadcastMaintenanceController::class, 'markRead']);
+    Route::get('/admin/broadcast-maintenance', [BroadcastMaintenanceController::class, 'index'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/broadcast-maintenance', [BroadcastMaintenanceController::class, 'store'])
+        ->middleware('permission:kelola_penawaran');
+    Route::get('/admin/broadcast-maintenance/{id}', [BroadcastMaintenanceController::class, 'show'])
+        ->middleware('permission:kelola_penawaran');
+    Route::put('/admin/broadcast-maintenance/{id}', [BroadcastMaintenanceController::class, 'update'])
+        ->middleware('permission:kelola_penawaran');
+    Route::delete('/admin/broadcast-maintenance/{id}', [BroadcastMaintenanceController::class, 'destroy'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/broadcast-maintenance/{id}/send', [BroadcastMaintenanceController::class, 'send'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/broadcast-maintenance/{id}/publish', [BroadcastMaintenanceController::class, 'publish'])
+        ->middleware('permission:kelola_penawaran');
+    Route::post('/admin/broadcast-maintenance/{id}/unpublish', [BroadcastMaintenanceController::class, 'unpublish'])
+        ->middleware('permission:kelola_penawaran');
+
     // Penawaran & Proyek Routes
     Route::get('/penawaran', [PenawaranController::class, 'index']);
     Route::post('/penawaran', [PenawaranController::class, 'store'])->middleware('permission:kelola_penawaran');
@@ -122,6 +165,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/proyek', [ProyekController::class, 'index']);
     Route::post('/proyek', [ProyekController::class, 'store']); // Customer mengajukan brief proyek
     Route::get('/proyek/{id}', [ProyekController::class, 'show']);
+    Route::put('/proyek/{id}/validasi', [ProyekController::class, 'validasi'])->middleware('permission:kelola_proyek');
     Route::put('/proyek/{id}', [ProyekController::class, 'update'])->middleware('permission:kelola_proyek');
     Route::delete('/proyek/{id}', [ProyekController::class, 'destroy'])->middleware('permission:kelola_proyek');
     Route::post('/proyek/{id}/dokumentasi', [ProyekController::class, 'uploadDokumentasi']);

@@ -13,12 +13,14 @@ class Proyek extends Model
 
     protected $fillable = [
         'penawaran_id',
+        'chat_session_id',
         'customer_id',
         'layanan_id',
         'nama_proyek',
         'deskripsi_kebutuhan',
         'progress',
         'status_proyek',
+        'alasan_penolakan',
         'tanggal_mulai',
         'tanggal_selesai',
         'timeline',
@@ -38,6 +40,11 @@ class Proyek extends Model
     public function customer()
     {
         return $this->belongsTo(User::class, 'customer_id');
+    }
+
+    public function chatSession()
+    {
+        return $this->belongsTo(ChatSession::class, 'chat_session_id');
     }
 
     public function layanan()

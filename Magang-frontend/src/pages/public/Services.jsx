@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/useAuth'
 import { serviceCategories as staticCategories } from '../../data/servicesData'
 import { ServiceIcon } from '../../components/ServiceIcon'
 import api from '../../api/axios'
@@ -8,9 +9,13 @@ export default function Services() {
   const { categorySlug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeCategoryParam = searchParams.get('kategori') || categorySlug
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
 
   const [settings, setSettings] = useState({})
   const [categories, setCategories] = useState(staticCategories)
+  const [startingChatId, setStartingChatId] = useState(null)
 
   useEffect(() => {
     api.get('/public/pengaturan')
@@ -45,6 +50,31 @@ export default function Services() {
 
   const waNumber = (settings.no_telp || "081234567890").replace(/\D/g, "")
   const waLink = `https://wa.me/62${waNumber.startsWith("0") ? waNumber.slice(1) : waNumber}`
+
+  const handleTanyaLayanan = async (layananId) => {
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: location.pathname,
+          alert: 'Silakan masuk atau daftar akun terlebih dahulu untuk berkonsultasi mengenai layanan kami.'
+        }
+      })
+      return
+    }
+
+    setStartingChatId(layananId)
+    try {
+      const res = await api.post('/chats', { layanan_id: layananId })
+      navigate('/admin/chat', {
+        state: { activeChatId: res.data.id }
+      })
+    } catch (err) {
+      console.error('Gagal memulai obrolan:', err)
+      alert('Gagal memulai obrolan. Silakan coba beberapa saat lagi.')
+    } finally {
+      setStartingChatId(null)
+    }
+  }
 
   // Find active category if selected
   const activeCategory = categories.find(
@@ -121,14 +151,16 @@ export default function Services() {
                   >
                     Konsultasi
                   </Link>
-                  <a
-                    href={`${waLink}?text=${encodeURIComponent(`Halo Kurva, saya ingin bertanya mengenai paket ${item.title}.`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => handleTanyaLayanan(item.id)}
+                    disabled={startingChatId === item.id}
                     className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                   >
-                    Tanya WA &rarr;
-                  </a>
+                    {startingChatId === item.id ? (
+                      <span className="loading loading-spinner loading-xs"></span>
+                    ) : null}
+                    Tanya Layanan &rarr;
+                  </button>
                 </div>
               </div>
             ))}
@@ -235,14 +267,16 @@ export default function Services() {
                           >
                             Konsultasi
                           </Link>
-                          <a
-                            href={`${waLink}?text=${encodeURIComponent(`Halo Kurva, saya ingin bertanya mengenai paket ${item.title}.`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => handleTanyaLayanan(item.id)}
+                            disabled={startingChatId === item.id}
                             className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
                           >
-                            Tanya WA &rarr;
-                          </a>
+                            {startingChatId === item.id ? (
+                              <span className="loading loading-spinner loading-xs"></span>
+                            ) : null}
+                            Tanya Layanan &rarr;
+                          </button>
                         </div>
                       </div>
                     ))}

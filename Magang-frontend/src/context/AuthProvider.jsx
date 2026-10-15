@@ -62,8 +62,8 @@ export function AuthProvider({ children }) {
 
   const hasPermission = (perm) => permissions.includes(perm)
 
-  const register = async (name, email, password, password_confirmation) => {
-    const res = await api.post('/register', { name, email, password, password_confirmation })
+  const register = async (name, email, phone, password, password_confirmation) => {
+    const res = await api.post('/register', { name, email, phone, password, password_confirmation })
     localStorage.setItem('token', res.data.token)
     setUser(res.data.user)
     setPermissions(res.data.permissions || [])

@@ -1,0 +1,22 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam rectangleBorderColor #D2D2D2
+skinparam rectangleBackgroundColor #F7F7F7
+skinparam nodesep 10
+skinparam ranksep 12
+left to right direction
+rectangle "                    " as sidebar
+rectangle "                                                                                " as header
+rectangle "                 " as chatlist
+rectangle "                                              " as chatarea
+rectangle "                 " as document
+rectangle "                                              " as message
+rectangle "                 " as upload
+sidebar -[hidden]right- header
+header -[hidden]down- chatlist
+chatlist -[hidden]right- chatarea
+chatarea -[hidden]right- document
+chatarea -[hidden]down- message
+document -[hidden]down- upload
+@enduml
