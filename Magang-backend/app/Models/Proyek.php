@@ -18,6 +18,9 @@ class Proyek extends Model
         'layanan_id',
         'nama_proyek',
         'deskripsi_kebutuhan',
+        'harga_kontrak',
+        'harga_tawaran',
+        'alasan_tawaran',
         'progress',
         'status_proyek',
         'alasan_penolakan',
@@ -30,6 +33,8 @@ class Proyek extends Model
     protected $casts = [
         'timeline' => 'array',
         'dokumentasi' => 'array',
+        'harga_kontrak' => 'decimal:2',
+        'harga_tawaran' => 'decimal:2',
     ];
 
     public function penawaran()

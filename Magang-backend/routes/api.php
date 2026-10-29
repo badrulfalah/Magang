@@ -166,10 +166,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/proyek', [ProyekController::class, 'store']); // Customer mengajukan brief proyek
     Route::get('/proyek/{id}', [ProyekController::class, 'show']);
     Route::put('/proyek/{id}/validasi', [ProyekController::class, 'validasi'])->middleware('permission:kelola_proyek');
+    Route::put('/proyek/{id}/validasi-negosiasi', [ProyekController::class, 'validasiNegosiasi'])->middleware('permission:kelola_proyek');
+    Route::put('/proyek/{id}/konfirmasi-harga', [ProyekController::class, 'konfirmasiHarga']);
     Route::put('/proyek/{id}', [ProyekController::class, 'update'])->middleware('permission:kelola_proyek');
     Route::delete('/proyek/{id}', [ProyekController::class, 'destroy'])->middleware('permission:kelola_proyek');
-    Route::post('/proyek/{id}/dokumentasi', [ProyekController::class, 'uploadDokumentasi']);
-    Route::delete('/proyek/{id}/dokumentasi/{dokumenId}', [ProyekController::class, 'deleteDokumentasi']);
+    Route::post('/proyek/{id}/dokumentasi', [ProyekController::class, 'uploadDokumentasi'])->middleware('permission:kelola_proyek');
+    Route::delete('/proyek/{id}/dokumentasi/{dokumenId}', [ProyekController::class, 'deleteDokumentasi'])->middleware('permission:kelola_proyek');
 
     // Chat & Collaboration Routes (Customer & Marketing)
     Route::post('/chats/followup-from-form', [ChatController::class, 'followupFromForm']); // Follow-up dari Pesan Formulir Kontak

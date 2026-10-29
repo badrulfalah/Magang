@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuth } from '../../context/useAuth'
 import AjukanProyek from './AjukanProyek'
 import Toast from '../../components/Toast'
+import { formatRupiah } from '../../utils/format'
 
 export default function Proyek() {
   const { user, hasPermission } = useAuth()
+  const navigate = useNavigate()
   const isMarketingOrAdmin = hasPermission('kelola_proyek')
   const isCustomer = user?.roles?.some(role => role.name === 'customer')
 
@@ -33,6 +36,22 @@ export default function Proyek() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [alasanTolak, setAlasanTolak] = useState('')
   const [validating, setValidating] = useState(false)
+
+  // Harga kontrak state (marketing input saat terima pengajuan)
+  const [showHargaModal, setShowHargaModal] = useState(false)
+  const [hargaKontrakInput, setHargaKontrakInput] = useState('')
+
+  // Tawar harga state (customer)
+  const [showTawarModal, setShowTawarModal] = useState(false)
+  const [hargaTawaranInput, setHargaTawaranInput] = useState('')
+  const [alasanTawaranInput, setAlasanTawaranInput] = useState('')
+  const [confirmingHarga, setConfirmingHarga] = useState(false)
+
+  // Marketing validasi negosiasi states
+  const [showCounterModal, setShowCounterModal] = useState(false)
+  const [counterHargaInput, setCounterHargaInput] = useState('')
+  const [counterAlasanInput, setCounterAlasanInput] = useState('')
+  const [validatingNegosiasi, setValidatingNegosiasi] = useState(false)
 
   // Timeline management states
   const [newMilestoneJudul, setNewMilestoneJudul] = useState('')
@@ -89,6 +108,8 @@ export default function Proyek() {
     switch (st) {
       case 'pengajuan': return 0
       case 'ditolak': return 0
+      case 'ditawarkan': return 30
+      case 'negosiasi': return 40
       case 'Proses Pengerjaan': return 70
       case 'Selesai': return 90
       case 'Maintenance': return 95
@@ -109,6 +130,32 @@ export default function Proyek() {
   // Handle update status tahapan via stepper
   const handleUpdateStatusStepper = async (newStatus) => {
     if (!activeProyek) return
+
+    // Status 'pengajuan', 'ditawarkan', dan 'negosiasi' memiliki alur & validasi khusus
+    if (newStatus === 'pengajuan') {
+      showToast('Status "pengajuan" adalah status awal brief dari customer.', 'error')
+      return
+    }
+
+    if (newStatus === 'ditawarkan') {
+      if (activeProyek.status_proyek === 'pengajuan') {
+        setHargaKontrakInput('')
+        setShowHargaModal(true)
+        return
+      }
+      if (activeProyek.status_proyek === 'negosiasi') {
+        setCounterHargaInput(activeProyek.harga_kontrak || '')
+        setCounterAlasanInput('')
+        setShowCounterModal(true)
+        return
+      }
+    }
+
+    if (newStatus === 'negosiasi') {
+      showToast('Status "negosiasi" hanya dapat diinisiasi oleh customer saat menawar harga.', 'error')
+      return
+    }
+
     const calculatedProgress = getProgressByStatus(newStatus)
     try {
       const res = await api.put(`/proyek/${activeProyek.id}`, {
@@ -126,7 +173,7 @@ export default function Proyek() {
       fetchProyeks(res.data.id)
     } catch (err) {
       console.error(err)
-      showToast('Gagal memperbarui status tahapan.', 'error')
+      showToast(err.response?.data?.message || 'Gagal memperbarui status tahapan.', 'error')
     }
   }
 
@@ -147,29 +194,36 @@ export default function Proyek() {
         tanggal_selesai: tanggalSelesaiInput,
         timeline: activeProyek.timeline // Mengirimkan timeline saat ini
       })
-      alert('Proyek berhasil diperbarui!')
+      showToast('Kontrak waktu proyek berhasil diperbarui!')
+      setIsEditingKontrak(false)
       setActiveProyek(res.data)
       fetchProyeks(res.data.id)
     } catch (err) {
       console.error(err)
-      alert('Gagal memperbarui proyek.')
+      showToast(err.response?.data?.message || 'Gagal memperbarui proyek.', 'error')
     }
   }
 
-  // Handle validasi (Terima / Tolak Pengajuan)
-  const handleValidasi = async (aksi, alasan = '') => {
+  // Handle validasi (Terima / Tolak Pengajuan) — terima wajib sertakan harga_kontrak
+  const handleValidasi = async (aksi, alasan = '', hargaKontrak = null) => {
     if (!activeProyek) return
     setValidating(true)
     try {
-      const res = await api.put(`/proyek/${activeProyek.id}/validasi`, {
-        aksi,
-        alasan_penolakan: alasan,
-      })
-      showToast(aksi === 'terima' ? 'Pengajuan proyek disetujui! Proyek masuk tahap Proses Pengerjaan.' : 'Pengajuan proyek ditolak.', aksi === 'terima' ? 'success' : 'error')
+      const payload = { aksi, alasan_penolakan: alasan }
+      if (aksi === 'terima' && hargaKontrak) payload.harga_kontrak = hargaKontrak
+      const res = await api.put(`/proyek/${activeProyek.id}/validasi`, payload)
+      showToast(
+        aksi === 'terima'
+          ? `Harga kontrak ${formatRupiah(hargaKontrak)} ditawarkan. Menunggu persetujuan customer.`
+          : 'Pengajuan proyek ditolak.',
+        aksi === 'terima' ? 'success' : 'error'
+      )
       setActiveProyek(res.data)
       setStatusInput(res.data.status_proyek)
       setShowRejectModal(false)
       setAlasanTolak('')
+      setShowHargaModal(false)
+      setHargaKontrakInput('')
       fetchProyeks(res.data.id)
     } catch (err) {
       console.error(err)
@@ -179,11 +233,74 @@ export default function Proyek() {
     }
   }
 
+  // Handle konfirmasi harga oleh customer (setuju / tawar)
+  const handleKonfirmasiHarga = async (aksi) => {
+    if (!activeProyek) return
+    setConfirmingHarga(true)
+    try {
+      const payload = { aksi }
+      if (aksi === 'tawar') {
+        payload.harga_tawaran = hargaTawaranInput
+        payload.alasan_tawaran = alasanTawaranInput
+      }
+      const res = await api.put(`/proyek/${activeProyek.id}/konfirmasi-harga`, payload)
+      showToast(
+        aksi === 'setuju'
+          ? 'Harga disetujui! Proyek masuk tahap Proses Pengerjaan.'
+          : 'Tawaran harga terkirim. Menunggu respon marketing.',
+        'success'
+      )
+      setActiveProyek(res.data)
+      setStatusInput(res.data.status_proyek)
+      setShowTawarModal(false)
+      setHargaTawaranInput('')
+      setAlasanTawaranInput('')
+      fetchProyeks(res.data.id)
+    } catch (err) {
+      console.error(err)
+      showToast(err.response?.data?.message || 'Gagal memproses konfirmasi harga.', 'error')
+    } finally {
+      setConfirmingHarga(false)
+    }
+  }
+
+  // Handle validasi negosiasi oleh marketing (setuju_tawaran, counter, tolak)
+  const handleValidasiNegosiasi = async (aksi, counterHarga = null, alasan = '') => {
+    if (!activeProyek) return
+    setValidatingNegosiasi(true)
+    try {
+      const payload = { aksi }
+      if (aksi === 'counter' && counterHarga) payload.harga_kontrak = counterHarga
+      if (alasan) payload.alasan = alasan
+
+      const res = await api.put(`/proyek/${activeProyek.id}/validasi-negosiasi`, payload)
+      showToast(
+        aksi === 'setuju'
+          ? `Tawaran customer disetujui (${formatRupiah(activeProyek.harga_tawaran)}). Proyek masuk tahap Proses Pengerjaan.`
+          : aksi === 'counter'
+          ? `Harga counter ${formatRupiah(counterHarga)} telah ditawarkan ke customer.`
+          : 'Negosiasi harga telah ditolak.',
+        aksi === 'tolak' ? 'error' : 'success'
+      )
+      setActiveProyek(res.data)
+      setStatusInput(res.data.status_proyek)
+      setShowCounterModal(false)
+      setCounterHargaInput('')
+      setCounterAlasanInput('')
+      fetchProyeks(res.data.id)
+    } catch (err) {
+      console.error(err)
+      showToast(err.response?.data?.message || 'Gagal memproses validasi negosiasi.', 'error')
+    } finally {
+      setValidatingNegosiasi(false)
+    }
+  }
+
   // Add timeline milestone
   const handleAddMilestone = async (e) => {
     e.preventDefault()
     if (!newMilestoneJudul || !newMilestoneDate) {
-      alert('Harap isi judul milestone dan tanggal.')
+      showToast('Harap isi judul milestone dan tanggal.', 'error')
       return
     }
 
@@ -211,10 +328,11 @@ export default function Proyek() {
       setNewMilestoneDate('')
       setNewMilestoneSelesai(false)
       setIsAddingMilestone(false)
+      showToast('Milestone berhasil ditambahkan!')
       fetchProyeks(res.data.id)
     } catch (err) {
       console.error(err)
-      alert('Gagal menambah milestone.')
+      showToast('Gagal menambah milestone.', 'error')
     }
   }
 
@@ -283,10 +401,10 @@ export default function Proyek() {
       const fileInput = document.getElementById('doc-file-input')
       if (fileInput) fileInput.value = ''
       fetchProyeks(res.data.id)
-      alert('Dokumen pengerjaan berhasil diunggah!')
+      showToast('Dokumen pengerjaan berhasil diunggah!')
     } catch (err) {
       console.error(err)
-      alert('Gagal mengunggah berkas.')
+      showToast(err.response?.data?.message || 'Gagal mengunggah berkas.', 'error')
     } finally {
       setUploadingDoc(false)
     }
@@ -299,9 +417,10 @@ export default function Proyek() {
       const res = await api.delete(`/proyek/${activeProyek.id}/dokumentasi/${dokumenId}`)
       setActiveProyek(res.data)
       fetchProyeks(res.data.id)
+      showToast('Dokumen berhasil dihapus!')
     } catch (err) {
       console.error(err)
-      alert('Gagal menghapus berkas.')
+      showToast(err.response?.data?.message || 'Gagal menghapus berkas.', 'error')
     }
   }
 
@@ -415,6 +534,8 @@ export default function Proyek() {
                       proj.status_proyek === 'selesai' || proj.status_proyek === 'Selesai' ? 'bg-emerald-100 text-emerald-700' :
                       proj.status_proyek === 'pengajuan' ? 'bg-amber-100 text-amber-700' :
                       proj.status_proyek === 'ditolak' ? 'bg-rose-100 text-rose-700' :
+                      proj.status_proyek === 'ditawarkan' ? 'bg-blue-100 text-blue-700' :
+                      proj.status_proyek === 'negosiasi' ? 'bg-purple-100 text-purple-700' :
                       proj.status_proyek === 'Proses Pengerjaan' ? 'bg-indigo-100 text-indigo-700' :
                       proj.status_proyek === 'Maintenance' ? 'bg-teal-100 text-teal-700' :
                       proj.status_proyek === 'Arsip' ? 'bg-slate-200 text-slate-700' :
@@ -426,6 +547,12 @@ export default function Proyek() {
                   <h3 className="font-extrabold text-secondary group-hover:text-primary transition-colors text-sm line-clamp-2 leading-snug">
                     {proj.nama_proyek}
                   </h3>
+                  {proj.harga_kontrak && (
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 w-fit">
+                      <span className="text-[9px] font-bold text-emerald-600/70 uppercase">Nilai Kontrak:</span>
+                      <span>{formatRupiah(proj.harga_kontrak)}</span>
+                    </div>
+                  )}
                   {isMarketingOrAdmin && proj.customer && (
                     <p className="text-[10px] font-semibold text-primary/80">
                       Klien: {proj.customer.name}
@@ -471,9 +598,11 @@ export default function Proyek() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`px-3 py-1 text-xs font-bold rounded-full uppercase ${
-                    activeProyek.status_proyek === 'selesai' || activeProyek.status_proyek === 'Selesai' ? 'bg-emerald-150 text-emerald-800' :
+                    activeProyek.status_proyek === 'selesai' || activeProyek.status_proyek === 'Selesai' ? 'bg-emerald-100 text-emerald-800' :
                     activeProyek.status_proyek === 'pengajuan' ? 'bg-amber-100 text-amber-700' :
                     activeProyek.status_proyek === 'ditolak' ? 'bg-rose-100 text-rose-700' :
+                    activeProyek.status_proyek === 'ditawarkan' ? 'bg-blue-100 text-blue-700' :
+                    activeProyek.status_proyek === 'negosiasi' ? 'bg-purple-100 text-purple-700' :
                     activeProyek.status_proyek === 'Proses Pengerjaan' ? 'bg-indigo-100 text-indigo-700' :
                     activeProyek.status_proyek === 'Maintenance' ? 'bg-teal-100 text-teal-700' :
                     activeProyek.status_proyek === 'Arsip' ? 'bg-slate-200 text-slate-700' :
@@ -483,21 +612,27 @@ export default function Proyek() {
                   </span>
 
                   {/* Dropdown Ubah Status Terintegrasi pada Header Stepper (Marketing & Admin) */}
-                  {isMarketingOrAdmin && activeProyek.status_proyek !== 'pengajuan' && activeProyek.status_proyek !== 'ditolak' && (
+                  {isMarketingOrAdmin && (
                     <div className="dropdown dropdown-end">
                       <div tabIndex={0} role="button" className="btn btn-xs rounded-full border px-3 text-[10px] font-bold h-7 flex items-center gap-1.5 shadow-xs bg-white hover:bg-base-100 border-base-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                         <span>Ubah Status</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
-                      <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-2xl w-52 border border-base-200 mt-1 z-[100] space-y-1">
-                        {['Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'].map((st) => (
+                      <ul tabIndex={0} className="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-2xl w-56 border border-base-200 mt-1 z-[100] space-y-1">
+                        <li className="menu-title px-2.5 py-1 text-[9px] font-extrabold uppercase text-base-content/40">
+                          Pilih Tahapan Progres
+                        </li>
+                        {['pengajuan', 'ditawarkan', 'negosiasi', 'Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'].map((st) => (
                           <li key={st}>
                             <button
                               type="button"
                               onClick={() => handleUpdateStatusStepper(st)}
-                              className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold ${
+                              className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[11px] font-bold ${
                                 activeProyek.status_proyek === st ? 'bg-primary/10 text-primary' : 'hover:bg-base-100'
                               }`}
                             >
@@ -520,7 +655,7 @@ export default function Proyek() {
               {(() => {
                 // POV Customer: 4 tahapan ringkas: Deal -> Proses Pengerjaan -> Selesai -> Maintenance
                 // POV Marketing/Admin: 5 tahapan proyek: pengajuan -> Proses Pengerjaan -> Selesai -> Maintenance -> Arsip
-                const marketingStages = ['pengajuan', 'Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'];
+                const marketingStages = ['pengajuan', 'ditawarkan', 'negosiasi', 'Proses Pengerjaan', 'Selesai', 'Maintenance', 'Arsip'];
                 const customerStages = ['Deal', 'Proses Pengerjaan', 'Selesai', 'Maintenance'];
 
                 const stages = isCustomer ? customerStages : marketingStages;
@@ -531,7 +666,7 @@ export default function Proyek() {
                 else if (norm === 'selesai') norm = 'Selesai';
                 
                 // Jika customer, status proyek sebelum Deal tidak relevan — default ke Deal
-                if (isCustomer && ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran', 'pengajuan', 'ditolak'].includes(norm)) {
+                if (isCustomer && ['Ketertarikan', 'Ditindaklanjuti', 'Penawaran', 'pengajuan', 'ditolak', 'ditawarkan', 'negosiasi'].includes(norm)) {
                   norm = 'Deal';
                 }
 
@@ -559,11 +694,26 @@ export default function Proyek() {
                           const isCurrent = !isUnderReview && !isRejected && idx === curIdx;
                           
                           return (
-                            <div key={st} className="flex flex-col items-center gap-2 group/dot relative w-24">
+                            <button
+                              key={st}
+                              type="button"
+                              disabled={!isMarketingOrAdmin}
+                              onClick={() => {
+                                if (isMarketingOrAdmin && activeProyek.status_proyek !== st) {
+                                  handleUpdateStatusStepper(st)
+                                }
+                              }}
+                              title={isMarketingOrAdmin ? `Klik untuk ubah tahapan ke "${st}"` : st}
+                              className={`flex flex-col items-center gap-2 group/dot relative w-24 transition-all focus:outline-none ${
+                                isMarketingOrAdmin ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default'
+                              }`}
+                            >
                               <div 
                                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 shadow-xs shrink-0 ${
                                   active 
                                     ? 'bg-emerald-500 text-white scale-110 ring-4 ring-emerald-500/20' 
+                                    : isMarketingOrAdmin
+                                    ? 'bg-white text-base-content/40 border-2 border-base-300 group-hover/dot:border-primary group-hover/dot:text-primary group-hover/dot:shadow-sm'
                                     : 'bg-white text-base-content/30 border-2 border-base-300'
                                 }`}
                               >
@@ -572,21 +722,30 @@ export default function Proyek() {
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 ) : (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-base-300" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-base-300 group-hover/dot:bg-primary" />
                                 )}
                               </div>
                               <span 
-                                className={`text-[10px] font-bold tracking-tight text-center w-full leading-tight select-none mt-1 ${
-                                  isCurrent ? 'text-emerald-600 font-extrabold' : 'text-base-content/40'
+                                className={`text-[10px] font-bold tracking-tight text-center w-full leading-tight select-none mt-1 transition-colors ${
+                                  isCurrent 
+                                    ? 'text-emerald-600 font-extrabold' 
+                                    : isMarketingOrAdmin
+                                    ? 'text-base-content/50 group-hover/dot:text-primary font-semibold'
+                                    : 'text-base-content/40'
                                 }`}
                               >
                                 {st}
                               </span>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
                     </div>
+                    {isMarketingOrAdmin && (
+                      <p className="text-[10px] text-base-content/40 italic text-center select-none pt-1">
+                        Tip: Klik bulatan tahapan pada alur di atas atau gunakan tombol "Ubah Status" untuk memperbarui progres proyek.
+                      </p>
+                    )}
                   </div>
                 );
               })()}
@@ -609,145 +768,367 @@ export default function Proyek() {
                 </div>
               )}
 
-              {/* Kontrak Waktu Proyek */}
-              <div className="grid grid-cols-2 gap-4 bg-primary/5 p-4 rounded-2xl border border-primary/10 relative">
-                <div>
-                  <p className="text-[10px] font-bold text-base-content/40 uppercase">Tanggal Mulai Proyek</p>
-                  <p className="text-sm font-bold text-secondary mt-0.5">
-                    {activeProyek.tanggal_mulai 
-                      ? new Date(activeProyek.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                      : 'Belum ditentukan'}
-                  </p>
+              {/* Kontrak Waktu & Nilai Proyek */}
+              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 space-y-3">
+                <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                  <span className="text-[11px] font-extrabold text-secondary tracking-wide uppercase">
+                    Informasi Kontrak &amp; Jadwal Proyek
+                  </span>
+                  {isMarketingOrAdmin && (activeProyek.tanggal_mulai || activeProyek.tanggal_selesai) && (
+                    <button 
+                      onClick={() => setIsEditingKontrak(!isEditingKontrak)}
+                      className="btn btn-xs rounded-xl bg-white border border-[#DCE6E1] hover:border-primary/40 hover:bg-primary/5 text-primary text-xs font-semibold px-3 h-7 shadow-xs transition-all"
+                    >
+                      {isEditingKontrak ? 'Batal' : 'Edit Kontrak'}
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-base-content/40 uppercase">Target Serah Terima</p>
-                  <p className="text-sm font-bold text-secondary mt-0.5">
-                    {activeProyek.tanggal_selesai 
-                      ? new Date(activeProyek.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                      : 'Belum ditentukan'}
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-base-content/40 uppercase">Tanggal Mulai Proyek</p>
+                    <p className="text-sm font-bold text-secondary mt-0.5">
+                      {activeProyek.tanggal_mulai 
+                        ? new Date(activeProyek.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'Belum ditentukan'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-base-content/40 uppercase">Target Serah Terima</p>
+                    <p className="text-sm font-bold text-secondary mt-0.5">
+                      {activeProyek.tanggal_selesai 
+                        ? new Date(activeProyek.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'Belum ditentukan'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-base-content/40 uppercase">Nilai Kontrak Proyek</p>
+                    <p className="text-sm font-extrabold text-emerald-700 mt-0.5">
+                      {activeProyek.harga_kontrak ? formatRupiah(activeProyek.harga_kontrak) : 'Belum ditentukan'}
+                    </p>
+                  </div>
                 </div>
-                
-                {isMarketingOrAdmin && (activeProyek.tanggal_mulai || activeProyek.tanggal_selesai) && (
-                  <button 
-                    onClick={() => setIsEditingKontrak(!isEditingKontrak)}
-                    className="absolute top-3 right-3 btn btn-xs rounded-xl bg-white border border-[#DCE6E1] hover:border-primary/40 hover:bg-primary/5 text-primary text-xs font-semibold px-3 h-7 shadow-xs transition-all"
-                  >
-                    {isEditingKontrak ? 'Batal' : 'Edit Kontrak'}
-                  </button>
-                )}
               </div>
 
-              {isMarketingOrAdmin && (
-                <div className="pt-4 border-t border-base-200 space-y-6">
-                  {/* Form Kontrak Waktu Proyek */}
-                  {(!activeProyek.tanggal_mulai || !activeProyek.tanggal_selesai || isEditingKontrak) && (
-                    <form onSubmit={handleUpdateProyek} className="bg-base-200/40 p-4 rounded-2xl border border-base-300 flex flex-col gap-3">
-                      <h4 className="font-bold text-xs text-secondary flex items-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              {/* Form Kontrak Waktu Proyek (Khusus Marketing/Admin saat belum diatur atau mode edit) */}
+              {isMarketingOrAdmin && (!activeProyek.tanggal_mulai || !activeProyek.tanggal_selesai || isEditingKontrak) && (
+                <form onSubmit={handleUpdateProyek} className="bg-base-200/40 p-4 rounded-2xl border border-base-300 flex flex-col gap-3">
+                  <h4 className="font-bold text-xs text-secondary flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Atur Kontrak Waktu Proyek
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="form-control">
+                      <label className="label py-0.5"><span className="label-text text-[10px] font-bold text-secondary">Tanggal Mulai</span></label>
+                      <input 
+                        type="date" 
+                        className="input input-bordered rounded-xl text-xs w-full focus:outline-none bg-white"
+                        value={tanggalMulaiInput}
+                        onChange={(e) => setTanggalMulaiInput(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-control">
+                      <label className="label py-0.5"><span className="label-text text-[10px] font-bold text-secondary">Tanggal Target Selesai</span></label>
+                      <input 
+                        type="date" 
+                        className="input input-bordered rounded-xl text-xs w-full focus:outline-none bg-white"
+                        value={tanggalSelesaiInput}
+                        onChange={(e) => setTanggalSelesaiInput(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-1">
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary btn-sm rounded-xl text-white font-semibold border-none shadow-sm gap-1.5 px-4 transition-all hover:opacity-90"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Simpan Kontrak Waktu</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* ── CARD PANEL AKSI & NEGOSIASI HARGA PROYEK ── */}
+              {activeProyek.status_proyek === 'pengajuan' ? (
+                isMarketingOrAdmin ? (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-base-50/80 border border-base-200/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                         </svg>
-                        Atur Kontrak Waktu Proyek
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="form-control">
-                          <label className="label py-0.5"><span className="label-text text-[10px] font-bold text-secondary">Tanggal Mulai</span></label>
-                          <input 
-                            type="date" 
-                            className="input input-bordered rounded-xl text-xs w-full focus:outline-none bg-white"
-                            value={tanggalMulaiInput}
-                            onChange={(e) => setTanggalMulaiInput(e.target.value)}
-                          />
-                        </div>
-                        <div className="form-control">
-                          <label className="label py-0.5"><span className="label-text text-[10px] font-bold text-secondary">Tanggal Target Selesai</span></label>
-                          <input 
-                            type="date" 
-                            className="input input-bordered rounded-xl text-xs w-full focus:outline-none bg-white"
-                            value={tanggalSelesaiInput}
-                            onChange={(e) => setTanggalSelesaiInput(e.target.value)}
-                          />
-                        </div>
                       </div>
-                      <div className="flex justify-end mt-1">
-                        <button 
-                          type="submit" 
-                          className="btn btn-primary btn-sm rounded-xl text-white font-semibold border-none shadow-sm gap-1.5 px-4 transition-all hover:opacity-90"
-                        >
+                      <div className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-extrabold text-xs sm:text-sm text-secondary">Validasi Pengajuan Proyek</h4>
+                          <span className="badge badge-xs bg-amber-100 text-amber-800 border-amber-200 font-bold text-[9px] uppercase px-2 py-0.5">
+                            Menunggu Review
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-base-content/60 leading-tight">
+                          Proyek dari <span className="font-bold text-secondary">{activeProyek.customer?.name || 'Customer'}</span>. Tentukan nilai kontrak untuk memulai penawaran.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={validating}
+                        onClick={() => setShowRejectModal(true)}
+                        className="btn btn-xs sm:btn-sm btn-ghost hover:bg-rose-50 text-rose-600 rounded-xl px-3 font-bold text-xs gap-1.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>Tolak</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={validating}
+                        onClick={() => {
+                          setHargaKontrakInput('')
+                          setShowHargaModal(true)
+                        }}
+                        className="btn btn-xs sm:btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl px-4 font-bold text-xs shadow-2xs gap-1.5"
+                      >
+                        {validating ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        <span>Terima &amp; Tentukan Harga</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-base-50/80 border border-base-200/90 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-extrabold text-xs sm:text-sm text-secondary">Pengajuan Sedang Ditinjau</h4>
+                        <span className="badge badge-xs bg-amber-100 text-amber-800 border-amber-200 font-bold text-[9px] uppercase px-2 py-0.5">
+                          Menunggu Marketing
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-base-content/60">
+                        Brief proyek telah diterima. Tim marketing sedang meninjau kebutuhan teknis dan segera memberikan penawaran harga.
+                      </p>
+                    </div>
+                  </div>
+                )
+              ) : activeProyek.status_proyek === 'ditawarkan' ? (
+                /* ── PANEL DITAWARKAN (MINIMALIS & ELEGAN) ── */
+                <div className="p-4 sm:p-5 rounded-2xl bg-base-50/80 border border-base-200/90 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-extrabold text-xs sm:text-sm text-secondary">Harga Kontrak Ditawarkan</h4>
+                        <span className="badge badge-xs bg-blue-50 text-blue-700 border-blue-200 font-bold text-[9px] uppercase px-2 py-0.5">
+                          {isMarketingOrAdmin ? 'Menunggu Review Klien' : 'Perlu Respon Anda'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-[11px] font-medium text-base-content/55">Nominal Penawaran:</span>
+                        <span className="text-sm font-extrabold text-emerald-700 tracking-tight">
+                          {formatRupiah(activeProyek.harga_kontrak)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isMarketingOrAdmin ? (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCounterHargaInput(activeProyek.harga_kontrak || '')
+                          setCounterAlasanInput('')
+                          setShowCounterModal(true)
+                        }}
+                        className="btn btn-xs sm:btn-sm rounded-xl bg-white border border-[#DCE6E1] hover:bg-base-100 hover:border-primary/40 text-secondary font-semibold text-xs px-3 shadow-2xs gap-1.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        <span>Ubah Harga</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/penawaran?proyek_id=${activeProyek.id}&customer_id=${activeProyek.customer_id}`)}
+                        className="btn btn-xs sm:btn-sm bg-primary hover:opacity-90 text-white border-none rounded-xl px-3.5 font-bold text-xs shadow-2xs gap-1.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Buat Penawaran (Brosur)</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={confirmingHarga}
+                        onClick={() => {
+                          setHargaTawaranInput('')
+                          setAlasanTawaranInput('')
+                          setShowTawarModal(true)
+                        }}
+                        className="btn btn-xs sm:btn-sm rounded-xl bg-white border border-[#DCE6E1] hover:bg-purple-50 hover:border-purple-300 text-purple-700 font-bold text-xs px-3.5 shadow-2xs gap-1.5 transition-all"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span>Ajukan Tawaran</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={confirmingHarga}
+                        onClick={() => handleKonfirmasiHarga('setuju')}
+                        className="btn btn-xs sm:btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl px-4 font-bold text-xs shadow-2xs gap-1.5"
+                      >
+                        {confirmingHarga ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                          <span>Simpan Kontrak Waktu</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {/* Panel Validasi (jika status masih pengajuan) ATAU Form Update Progres (jika sudah divalidasi) */}
-                  {activeProyek.status_proyek === 'pengajuan' ? (
-                    <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-200/80 flex flex-col gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="font-extrabold text-sm text-secondary">Konfirmasi &amp; Validasi Pengajuan Proyek</h4>
-                          <p className="text-xs text-base-content/70 leading-relaxed">
-                            Proyek ini baru diajukan oleh <span className="font-bold text-secondary">{activeProyek.customer?.name || 'Customer'}</span>. 
-                            Silakan lakukan validasi: terima untuk memulai tahapan <span className="font-bold text-emerald-700">Proses Pengerjaan (Progress 70%)</span>, atau tolak dengan alasan.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-amber-200/60">
-                        <button
-                          type="button"
-                          disabled={validating}
-                          onClick={() => setShowRejectModal(true)}
-                          className="btn btn-sm btn-ghost hover:bg-rose-100 text-rose-700 rounded-xl px-4 font-bold text-xs gap-1.5"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          <span>Tolak Pengajuan</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={validating}
-                          onClick={() => {
-                            if (window.confirm(`Setujui pengajuan proyek "${activeProyek.nama_proyek}" dan mulai tahap Proses Pengerjaan?`)) {
-                              handleValidasi('terima')
-                            }
-                          }}
-                          className="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl px-5 font-bold text-xs shadow-sm gap-1.5"
-                        >
-                          {validating ? (
-                            <span className="loading loading-spinner loading-xs"></span>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                          <span>Setujui &amp; Mulai Pengerjaan</span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : activeProyek.status_proyek === 'ditolak' ? (
-                    <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-200 flex items-center justify-between gap-3 text-xs">
-                      <span className="font-semibold text-rose-800">Status proyek ini ditolak. Alur kerja tidak dapat dilanjutkan kecuali status diubah kembali.</span>
-                      <button
-                        type="button"
-                        onClick={() => handleValidasi('terima')}
-                        className="btn btn-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 font-bold border-none"
-                      >
-                        Buka Kembali &amp; Setujui
+                        )}
+                        <span>Setujui Harga</span>
                       </button>
                     </div>
-                  ) : null}
+                  )}
                 </div>
-              )}
+              ) : activeProyek.status_proyek === 'negosiasi' ? (
+                /* ── PANEL NEGOSIASI (MINIMALIS & ELEGAN) ── */
+                <div className="p-4 sm:p-5 rounded-2xl bg-base-50/80 border border-base-200/90 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-base-200/80 pb-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-700 flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-extrabold text-xs sm:text-sm text-secondary">
+                          {isMarketingOrAdmin ? 'Tawaran Harga dari Customer' : 'Menunggu Respon Marketing'}
+                        </h4>
+                        <span className="badge badge-xs bg-purple-100 text-purple-700 border-purple-200 font-bold text-[9px] uppercase px-2 py-0.5">
+                          Tahap Negosiasi
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="p-2.5 rounded-xl bg-white border border-[#DCE6E1] shadow-2xs flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-base-content/60">Harga Proyek Awal:</span>
+                      <span className="text-xs sm:text-sm font-bold text-secondary">{formatRupiah(activeProyek.harga_kontrak)}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-purple-50/60 border border-purple-200/70 shadow-2xs flex items-center justify-between">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[11px] font-semibold text-purple-900 block truncate">
+                          {isMarketingOrAdmin ? 'Tawaran Customer:' : 'Tawaran Anda:'}
+                        </span>
+                        {activeProyek.alasan_tawaran && (
+                          <span className="text-[10px] text-purple-700/80 italic block truncate max-w-[180px]" title={activeProyek.alasan_tawaran}>
+                            "{activeProyek.alasan_tawaran}"
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs sm:text-sm font-extrabold text-purple-700 shrink-0">{formatRupiah(activeProyek.harga_tawaran)}</span>
+                    </div>
+                  </div>
+
+                  {isMarketingOrAdmin && (
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-base-200/80">
+                      <button
+                        type="button"
+                        disabled={validatingNegosiasi}
+                        onClick={() => {
+                          if (window.confirm('Tolak negosiasi tawaran proyek ini?')) {
+                            handleValidasiNegosiasi('tolak')
+                          }
+                        }}
+                        className="btn btn-xs sm:btn-sm btn-ghost hover:bg-rose-50 text-rose-600 rounded-xl px-2.5 font-bold text-xs gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>Tolak</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={validatingNegosiasi}
+                        onClick={() => {
+                          setCounterHargaInput('')
+                          setCounterAlasanInput('')
+                          setShowCounterModal(true)
+                        }}
+                        className="btn btn-xs sm:btn-sm rounded-xl bg-white border border-[#DCE6E1] hover:bg-base-100 hover:border-primary/40 text-secondary font-semibold text-xs px-3 shadow-2xs gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span>Tawar Balik</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/penawaran?proyek_id=${activeProyek.id}&customer_id=${activeProyek.customer_id}`)}
+                        className="btn btn-xs sm:btn-sm rounded-xl bg-white border border-[#DCE6E1] hover:bg-base-100 hover:border-primary/40 text-secondary font-semibold text-xs px-3 shadow-2xs gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Proposal Brosur</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={validatingNegosiasi}
+                        onClick={() => {
+                          if (window.confirm(`Setujui tawaran customer sebesar ${formatRupiah(activeProyek.harga_tawaran)} sebagai harga kesepakatan final? Proyek akan langsung masuk tahap Proses Pengerjaan.`)) {
+                            handleValidasiNegosiasi('setuju')
+                          }
+                        }}
+                        className="btn btn-xs sm:btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl px-3.5 font-bold text-xs shadow-2xs gap-1"
+                      >
+                        {validatingNegosiasi ? (
+                          <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        <span>Setujui ({formatRupiah(activeProyek.harga_tawaran)})</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : activeProyek.status_proyek === 'ditolak' ? (
+                <div className="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200/80 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-rose-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="font-semibold">Status proyek ini ditolak. Alur kerja tidak dapat dilanjutkan kecuali status diubah kembali.</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {/* Timeline Milestone Card */}
@@ -1071,6 +1452,199 @@ export default function Proyek() {
               >
                 {validating ? <span className="loading loading-spinner loading-xs"></span> : null}
                 <span>Konfirmasi Tolak</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: INPUT HARGA KONTRAK (MARKETING) ── */}
+      {showHargaModal && (
+        <div className="modal modal-open z-50">
+          <div className="modal-box rounded-3xl max-w-md border border-base-300">
+            <h3 className="font-extrabold text-base text-secondary border-b border-base-200 pb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Setujui Harga Kontrak</span>
+            </h3>
+            <div className="space-y-3 pt-3">
+              <p className="text-xs text-base-content/70">
+                Tentukan harga kontrak untuk proyek ini. Harga akan ditinjau oleh customer sebelum pengerjaan dimulai.
+              </p>
+              <div className="form-control">
+                <label className="label py-1"><span className="text-xs font-bold text-secondary">Harga Kontrak (Rp) <span className="text-error">*</span></span></label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  className="input input-bordered rounded-xl text-sm w-full focus:outline-none focus:border-emerald-400"
+                  placeholder="Contoh: 15000000"
+                  value={hargaKontrakInput}
+                  onChange={(e) => setHargaKontrakInput(e.target.value)}
+                  autoFocus
+                />
+                {hargaKontrakInput !== '' && (
+                  <p className="text-xs text-emerald-600 font-semibold mt-1">{formatRupiah(hargaKontrakInput)}</p>
+                )}
+              </div>
+            </div>
+            <div className="modal-action border-t border-base-200 pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={validating}
+                onClick={() => {
+                  setShowHargaModal(false)
+                  setHargaKontrakInput('')
+                }}
+                className="btn btn-sm btn-ghost rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={validating || !hargaKontrakInput || Number(hargaKontrakInput) <= 0}
+                onClick={() => handleValidasi('terima', '', hargaKontrakInput)}
+                className="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold border-none"
+              >
+                {validating ? <span className="loading loading-spinner loading-xs"></span> : null}
+                <span>Konfirmasi Terima &amp; Tawarkan Harga</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: TAWAR HARGA (CUSTOMER) ── */}
+      {showTawarModal && (
+        <div className="modal modal-open z-50">
+          <div className="modal-box rounded-3xl max-w-md border border-base-300">
+            <h3 className="font-extrabold text-base text-secondary border-b border-base-200 pb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <span>Ajukan Tawaran Harga</span>
+            </h3>
+            <div className="space-y-3 pt-3">
+              <p className="text-xs text-base-content/70">
+                Harga kontrak: <span className="font-bold text-blue-700">{formatRupiah(activeProyek?.harga_kontrak)}</span>.
+                Ajukan tawaran harga Anda beserta alasan.
+              </p>
+              <div className="form-control">
+                <label className="label py-1"><span className="text-xs font-bold text-secondary">Harga Tawaran (Rp) <span className="text-error">*</span></span></label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  className="input input-bordered rounded-xl text-sm w-full focus:outline-none focus:border-purple-400"
+                  placeholder="Contoh: 120000000"
+                  value={hargaTawaranInput}
+                  onChange={(e) => setHargaTawaranInput(e.target.value)}
+                  autoFocus
+                />
+                {hargaTawaranInput !== '' && (
+                  <p className="text-xs text-purple-600 font-semibold mt-1">{formatRupiah(hargaTawaranInput)}</p>
+                )}
+              </div>
+              <div className="form-control">
+                <label className="label py-1"><span className="text-xs font-bold text-secondary">Alasan Tawaran <span className="text-error">*</span></span></label>
+                <textarea
+                  className="textarea textarea-bordered rounded-xl text-xs w-full h-20 focus:outline-none focus:border-purple-400"
+                  placeholder="Contoh: Anggaran kami terbatas, apakah bisa disesuaikan ke angka ini?"
+                  value={alasanTawaranInput}
+                  onChange={(e) => setAlasanTawaranInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-action border-t border-base-200 pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={confirmingHarga}
+                onClick={() => {
+                  setShowTawarModal(false)
+                  setHargaTawaranInput('')
+                  setAlasanTawaranInput('')
+                }}
+                className="btn btn-sm btn-ghost rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={confirmingHarga || !hargaTawaranInput || Number(hargaTawaranInput) <= 0 || !alasanTawaranInput.trim()}
+                onClick={() => handleKonfirmasiHarga('tawar')}
+                className="btn btn-sm bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold border-none"
+              >
+                {confirmingHarga ? <span className="loading loading-spinner loading-xs"></span> : null}
+                <span>Kirim Tawaran</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: TAWAR BALIK / COUNTER HARGA (MARKETING) ── */}
+      {showCounterModal && (
+        <div className="modal modal-open z-50">
+          <div className="modal-box rounded-3xl max-w-md border border-base-300">
+            <h3 className="font-extrabold text-base text-secondary border-b border-base-200 pb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <span>Tawarkan Harga Balik (Counter)</span>
+            </h3>
+            <div className="space-y-3 pt-3">
+              <p className="text-xs text-base-content/70">
+                Tawaran customer: <span className="font-bold text-purple-700">{formatRupiah(activeProyek?.harga_tawaran)}</span>.
+                Masukkan harga baru yang Anda tawarkan ke customer.
+              </p>
+              <div className="form-control">
+                <label className="label py-1"><span className="text-xs font-bold text-secondary">Harga Kontrak Revisi (Rp) <span className="text-error">*</span></span></label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  className="input input-bordered rounded-xl text-sm w-full focus:outline-none focus:border-secondary"
+                  placeholder="Contoh: 135000000"
+                  value={counterHargaInput}
+                  onChange={(e) => setCounterHargaInput(e.target.value)}
+                  autoFocus
+                />
+                {counterHargaInput !== '' && (
+                  <p className="text-xs text-emerald-600 font-semibold mt-1">{formatRupiah(counterHargaInput)}</p>
+                )}
+              </div>
+              <div className="form-control">
+                <label className="label py-1"><span className="text-xs font-bold text-secondary">Catatan untuk Customer (Opsional)</span></label>
+                <textarea
+                  className="textarea textarea-bordered rounded-xl text-xs w-full h-20 focus:outline-none focus:border-secondary"
+                  placeholder="Contoh: Kami bisa sesuaikan ke harga ini dengan penyesuaian ruang lingkup..."
+                  value={counterAlasanInput}
+                  onChange={(e) => setCounterAlasanInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-action border-t border-base-200 pt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={validatingNegosiasi}
+                onClick={() => {
+                  setShowCounterModal(false)
+                  setCounterHargaInput('')
+                  setCounterAlasanInput('')
+                }}
+                className="btn btn-sm btn-ghost rounded-xl text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={validatingNegosiasi || !counterHargaInput || Number(counterHargaInput) <= 0}
+                onClick={() => handleValidasiNegosiasi('counter', counterHargaInput, counterAlasanInput)}
+                className="btn btn-sm bg-secondary hover:opacity-90 text-white rounded-xl text-xs font-bold border-none"
+              >
+                {validatingNegosiasi ? <span className="loading loading-spinner loading-xs"></span> : null}
+                <span>Kirim Tawaran Baru</span>
               </button>
             </div>
           </div>
